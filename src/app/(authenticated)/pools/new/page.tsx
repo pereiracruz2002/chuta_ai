@@ -71,7 +71,7 @@ export default function NewPoolPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome do Bolao</Label>
+              <Label htmlFor="name" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Nome do Bolao</Label>
               <Input
                 id="name"
                 placeholder="Ex: Bolao da Galera"

@@ -134,7 +134,7 @@ export default function RegisterPage() {
         <CardContent className="space-y-5 pt-4">
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome</Label>
+              <Label htmlFor="name" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Nome</Label>
               <Input
                 id="name"
                 type="text"
@@ -146,7 +146,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</Label>
+              <Label htmlFor="email" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -158,7 +158,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Senha</Label>
+              <Label htmlFor="password" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -171,7 +171,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Confirmar Senha</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Confirmar Senha</Label>
               <Input
                 id="confirmPassword"
                 type="password"

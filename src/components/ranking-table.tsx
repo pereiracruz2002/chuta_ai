@@ -17,7 +17,7 @@ export function RankingTable({ members, userId }: RankingTableProps) {
     if (index === 0) return <Crown className="w-3.5 h-3.5" />;
     if (index === 1) return <Medal className="w-3.5 h-3.5" />;
     if (index === 2) return <Award className="w-3.5 h-3.5" />;
-    return <span className="text-xs font-bold">{index + 1}</span>;
+    return <span className="text-sm font-bold">{index + 1}</span>;
   };
 
   const getMedalStyle = (index: number) => {
@@ -70,12 +70,12 @@ export function RankingTable({ members, userId }: RankingTableProps) {
                     {member.users?.name || "Usuario"}
                   </span>
                   {member.user_id === userId && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">Voce</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">Voce</span>
                   )}
                 </div>
                 <div className="text-right">
                   <span className="font-black text-lg">{member.score}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1 font-medium">pts</span>
+                  <span className="text-xs text-muted-foreground ml-1 font-medium">pts</span>
                 </div>
               </div>
             ))}

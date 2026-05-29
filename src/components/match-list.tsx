@@ -66,7 +66,7 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
           {/* Stage divider */}
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/40 to-transparent" />
-            <span className="font-black text-[11px] text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.15em] px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               {stage}
             </span>
             <div className="h-px flex-1 bg-gradient-to-l from-emerald-500/40 to-transparent" />
@@ -97,7 +97,7 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                         {/* Home team */}
                         <div className="flex-1 flex flex-col items-center gap-2 min-w-0">
                           <TeamFlag team={match.home_team} size={40} />
-                          <span className="font-bold text-xs text-center leading-tight truncate w-full">
+                          <span className="font-bold text-sm text-center leading-tight truncate w-full">
                             {match.home_team}
                           </span>
                         </div>
@@ -123,23 +123,23 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                           )}
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Clock className="w-3 h-3" />
-                            <span className="text-[10px] font-medium">
+                            <span className="text-xs font-medium">
                               {formatDate(match.starts_at)}
                             </span>
                           </div>
                           {match.finished && (
-                            <Badge variant="secondary" className="text-[10px] px-2 py-0.5 gap-1 bg-muted/50">
+                            <Badge variant="secondary" className="text-xs px-2 py-0.5 gap-1 bg-muted/50">
                               <CheckCircle2 className="w-3 h-3" />
                               Encerrado
                             </Badge>
                           )}
                           {!started && !match.finished && (
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-bold">
+                            <Badge variant="outline" className="text-xs px-2 py-0.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-bold">
                               Aberto
                             </Badge>
                           )}
                           {started && !match.finished && (
-                            <Badge className="text-[10px] px-2 py-0.5 gap-1 bg-red-500/15 text-red-400 border border-red-500/30 font-bold">
+                            <Badge className="text-xs px-2 py-0.5 gap-1 bg-red-500/15 text-red-400 border border-red-500/30 font-bold">
                               <Radio className="w-3 h-3 animate-pulse" />
                               Ao vivo
                             </Badge>
@@ -149,7 +149,7 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                         {/* Away team */}
                         <div className="flex-1 flex flex-col items-center gap-2 min-w-0">
                           <TeamFlag team={match.away_team} size={40} />
-                          <span className="font-bold text-xs text-center leading-tight truncate w-full">
+                          <span className="font-bold text-sm text-center leading-tight truncate w-full">
                             {match.away_team}
                           </span>
                         </div>
@@ -158,7 +158,7 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                       {/* Prediction info */}
                       {prediction ? (
                         <div className="mt-4 pt-3 border-t border-border/30 flex items-center justify-center gap-3">
-                          <span className="text-[11px] text-muted-foreground font-medium">Seu palpite:</span>
+                          <span className="text-xs text-muted-foreground font-medium">Seu palpite:</span>
                           <span className="font-bold text-sm bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg text-emerald-700 dark:text-emerald-300">
                             {prediction.home_prediction} x {prediction.away_prediction}
                           </span>
@@ -179,7 +179,7 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                         </div>
                       ) : !started && !match.finished ? (
                         <div className="mt-4 pt-3 border-t border-border/30 text-center">
-                          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                             Toque para registrar seu palpite
                           </span>
                         </div>

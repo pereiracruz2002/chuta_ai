@@ -105,7 +105,7 @@ export function LoginForm() {
           {/* Email/Password Form */}
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</Label>
+              <Label htmlFor="email" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -117,7 +117,7 @@ export function LoginForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Senha</Label>
+              <Label htmlFor="password" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Senha</Label>
               <Input
                 id="password"
                 type="password"
