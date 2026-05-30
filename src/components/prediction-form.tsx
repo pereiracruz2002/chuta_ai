@@ -37,6 +37,13 @@ export function PredictionForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Verifica se o jogo já começou antes de enviar
+    if (new Date(match.starts_at) <= new Date()) {
+      setError("Este jogo já começou. Não é mais possível registrar ou alterar palpites.");
+      return;
+    }
+
     const home = parseInt(homeScore);
     const away = parseInt(awayScore);
 
@@ -60,7 +67,11 @@ export function PredictionForm({
         .eq("id", prediction.id);
 
       if (updateError) {
-        setError("Erro ao atualizar palpite.");
+        if (updateError.code === "42501" || updateError.message?.includes("policy")) {
+          setError("Este jogo já começou. Não é mais possível alterar palpites.");
+        } else {
+          setError("Erro ao atualizar palpite.");
+        }
         setLoading(false);
         return;
       }
@@ -76,7 +87,11 @@ export function PredictionForm({
         });
 
       if (insertError) {
-        setError("Erro ao salvar palpite.");
+        if (insertError.code === "42501" || insertError.message?.includes("policy")) {
+          setError("Este jogo já começou. Não é mais possível registrar palpites.");
+        } else {
+          setError("Erro ao salvar palpite.");
+        }
         setLoading(false);
         return;
       }

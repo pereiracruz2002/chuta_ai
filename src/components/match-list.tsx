@@ -21,7 +21,22 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
 
   useEffect(() => {
     setNow(new Date());
+    // Atualiza a cada 30 segundos para bloquear palpites quando o jogo começar
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Fecha o formulário automaticamente se o jogo selecionado já começou
+  useEffect(() => {
+    if (selectedMatch && now) {
+      const match = matches.find((m: any) => m.id === selectedMatch);
+      if (match && new Date(match.starts_at) <= now) {
+        setSelectedMatch(null);
+      }
+    }
+  }, [now, selectedMatch, matches]);
 
   // Group matches by stage
   const grouped = matches.reduce(
@@ -181,6 +196,12 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                         <div className="mt-4 pt-3 border-t border-border/30 text-center">
                           <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                             Toque para registrar seu palpite
+                          </span>
+                        </div>
+                      ) : started && !match.finished ? (
+                        <div className="mt-4 pt-3 border-t border-border/30 text-center">
+                          <span className="text-xs text-red-500 dark:text-red-400 font-semibold">
+                            Palpites encerrados para este jogo
                           </span>
                         </div>
                       ) : null}
