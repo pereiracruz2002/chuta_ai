@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TeamFlag } from "@/components/team-flag";
-import { ArrowLeft, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, RefreshCw, Loader2 } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface AdminMatchListProps {
@@ -18,7 +18,38 @@ interface AdminMatchListProps {
 
 export function AdminMatchList({ matches, poolId }: AdminMatchListProps) {
   const [editingMatch, setEditingMatch] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const router = useRouter();
+
+  const handleSyncResults = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+
+    try {
+      const response = await fetch("/api/update-results", {
+        headers: {
+          "x-manual-trigger": "true",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setSyncResult(`Erro: ${data.error}`);
+      } else if (data.updated > 0) {
+        setSyncResult(`${data.updated} jogo(s) atualizado(s)!`);
+        router.refresh();
+      } else {
+        setSyncResult(data.message || "Nenhum jogo atualizado.");
+      }
+    } catch {
+      setSyncResult("Erro de conexão ao buscar resultados.");
+    }
+
+    setSyncing(false);
+    setTimeout(() => setSyncResult(null), 5000);
+  };
 
   // Group matches by stage
   const grouped = matches.reduce(
@@ -41,15 +72,44 @@ export function AdminMatchList({ matches, poolId }: AdminMatchListProps) {
 
   return (
     <div className="space-y-8">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => router.push(`/pools/${poolId}`)}
-        className="cursor-pointer gap-1.5 border-border/50 hover:border-emerald-500/30 hover:bg-emerald-500/5 font-semibold"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Voltar ao Bolao
-      </Button>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`/pools/${poolId}`)}
+          className="cursor-pointer gap-1.5 border-border/50 hover:border-emerald-500/30 hover:bg-emerald-500/5 font-semibold"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Voltar ao Bolao
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSyncResults}
+          disabled={syncing}
+          className="cursor-pointer gap-1.5 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+        >
+          {syncing ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3.5 h-3.5" />
+          )}
+          {syncing ? "Buscando..." : "Buscar resultados"}
+        </Button>
+      </div>
+
+      {syncResult && (
+        <div className={`rounded-lg p-3 text-center text-sm font-medium ${
+          syncResult.startsWith("Erro")
+            ? "bg-destructive/10 border border-destructive/20 text-destructive"
+            : syncResult.includes("atualizado")
+            ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+            : "bg-muted/50 border border-border/50 text-muted-foreground"
+        }`}>
+          {syncResult}
+        </div>
+      )}
 
       {Object.entries(grouped).map(([stage, stageMatches]) => (
         <div key={stage} className="space-y-4">
