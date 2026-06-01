@@ -44,11 +44,13 @@ export function PredictionForm({
       return;
     }
 
-    const home = parseInt(homeScore);
-    const away = parseInt(awayScore);
+    const homeValue = homeScore.trim() === "" ? "0" : homeScore.trim();
+    const awayValue = awayScore.trim() === "" ? "0" : awayScore.trim();
+    const home = Number(homeValue);
+    const away = Number(awayValue);
 
-    if (isNaN(home) || isNaN(away) || home < 0 || away < 0) {
-      setError("Informe placares validos (numeros >= 0).");
+    if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0) {
+      setError("Informe placares validos (numeros inteiros >= 0).");
       return;
     }
 
