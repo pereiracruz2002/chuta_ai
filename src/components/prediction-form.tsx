@@ -58,6 +58,14 @@ export function PredictionForm({
     setError("");
     const supabase = createClient();
 
+    // Verifica sessão antes de enviar
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setError("Sessão expirada. Recarregue a página e tente novamente.");
+      setLoading(false);
+      return;
+    }
+
     if (prediction) {
       const { error: updateError } = await supabase
         .from("predictions")
@@ -70,7 +78,12 @@ export function PredictionForm({
 
       if (updateError) {
         if (updateError.code === "42501" || updateError.message?.includes("policy")) {
-          setError("Este jogo já começou. Não é mais possível alterar palpites.");
+          // Verifica se realmente é o jogo que começou ou se é problema de auth
+          if (new Date(match.starts_at) <= new Date()) {
+            setError("Este jogo já começou. Não é mais possível alterar palpites.");
+          } else {
+            setError("Erro de permissão. Recarregue a página e tente novamente.");
+          }
         } else {
           setError("Erro ao atualizar palpite.");
         }
@@ -90,7 +103,13 @@ export function PredictionForm({
 
       if (insertError) {
         if (insertError.code === "42501" || insertError.message?.includes("policy")) {
-          setError("Este jogo já começou. Não é mais possível registrar palpites.");
+          if (new Date(match.starts_at) <= new Date()) {
+            setError("Este jogo já começou. Não é mais possível registrar palpites.");
+          } else {
+            setError("Erro de permissão. Recarregue a página e tente novamente.");
+          }
+        } else if (insertError.code === "23505") {
+          setError("Você já tem um palpite para este jogo. Recarregue a página.");
         } else {
           setError("Erro ao salvar palpite.");
         }
