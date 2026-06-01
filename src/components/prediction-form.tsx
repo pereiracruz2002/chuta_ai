@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +21,6 @@ export function PredictionForm({
   match,
   prediction,
   poolId,
-  userId,
   onClose,
 }: PredictionFormProps) {
   const [homeScore, setHomeScore] = useState(
@@ -56,86 +54,31 @@ export function PredictionForm({
 
     setLoading(true);
     setError("");
-    const supabase = createClient();
 
-    // Verifica sessão antes de enviar
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Sessão expirada. Recarregue a página e tente novamente.");
-      setLoading(false);
-      return;
-    }
-
-    // Verifica se o match existe e está no futuro (mesma checagem que a RLS policy faz)
-    const { data: matchCheck } = await supabase
-      .from("matches")
-      .select("id, starts_at")
-      .eq("id", match.id)
-      .single();
-
-    if (!matchCheck) {
-      setError("Jogo não encontrado. Recarregue a página.");
-      setLoading(false);
-      return;
-    }
-
-    if (new Date(matchCheck.starts_at) <= new Date()) {
-      setError("Este jogo já começou. Não é mais possível registrar palpites.");
-      setLoading(false);
-      return;
-    }
-
-    if (prediction) {
-      const { error: updateError } = await supabase
-        .from("predictions")
-        .update({
-          home_prediction: home,
-          away_prediction: away,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", prediction.id);
-
-      if (updateError) {
-        if (updateError.code === "42501" || updateError.message?.includes("policy")) {
-          // Verifica se realmente é o jogo que começou ou se é problema de auth
-          if (new Date(match.starts_at) <= new Date()) {
-            setError("Este jogo já começou. Não é mais possível alterar palpites.");
-          } else {
-            setError("Erro de permissão. Recarregue a página e tente novamente.");
-          }
-        } else {
-          setError("Erro ao atualizar palpite.");
-        }
-        setLoading(false);
-        return;
-      }
-    } else {
-      const { error: insertError } = await supabase
-        .from("predictions")
-        .insert({
-          user_id: user.id,
+    try {
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           pool_id: poolId,
           match_id: match.id,
           home_prediction: home,
           away_prediction: away,
-        });
+          prediction_id: prediction?.id || null,
+        }),
+      });
 
-      if (insertError) {
-        console.error("Prediction insert error:", JSON.stringify(insertError));
-        if (insertError.code === "42501" || insertError.message?.includes("policy")) {
-          if (new Date(match.starts_at) <= new Date()) {
-            setError("Este jogo já começou. Não é mais possível registrar palpites.");
-          } else {
-            setError(`Erro de permissão (${insertError.code}). Tente fazer logout e login novamente.`);
-          }
-        } else if (insertError.code === "23505") {
-          setError("Você já tem um palpite para este jogo. Recarregue a página.");
-        } else {
-          setError(`Erro ao salvar palpite (${insertError.code}: ${insertError.message}).`);
-        }
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erro ao salvar palpite.");
         setLoading(false);
         return;
       }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+      setLoading(false);
+      return;
     }
 
     setLoading(false);
