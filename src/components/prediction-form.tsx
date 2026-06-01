@@ -66,6 +66,25 @@ export function PredictionForm({
       return;
     }
 
+    // Verifica se o match existe e está no futuro (mesma checagem que a RLS policy faz)
+    const { data: matchCheck } = await supabase
+      .from("matches")
+      .select("id, starts_at")
+      .eq("id", match.id)
+      .single();
+
+    if (!matchCheck) {
+      setError("Jogo não encontrado. Recarregue a página.");
+      setLoading(false);
+      return;
+    }
+
+    if (new Date(matchCheck.starts_at) <= new Date()) {
+      setError("Este jogo já começou. Não é mais possível registrar palpites.");
+      setLoading(false);
+      return;
+    }
+
     if (prediction) {
       const { error: updateError } = await supabase
         .from("predictions")
@@ -94,7 +113,7 @@ export function PredictionForm({
       const { error: insertError } = await supabase
         .from("predictions")
         .insert({
-          user_id: userId,
+          user_id: user.id,
           pool_id: poolId,
           match_id: match.id,
           home_prediction: home,
@@ -102,16 +121,17 @@ export function PredictionForm({
         });
 
       if (insertError) {
+        console.error("Prediction insert error:", JSON.stringify(insertError));
         if (insertError.code === "42501" || insertError.message?.includes("policy")) {
           if (new Date(match.starts_at) <= new Date()) {
             setError("Este jogo já começou. Não é mais possível registrar palpites.");
           } else {
-            setError("Erro de permissão. Recarregue a página e tente novamente.");
+            setError(`Erro de permissão (${insertError.code}). Tente fazer logout e login novamente.`);
           }
         } else if (insertError.code === "23505") {
           setError("Você já tem um palpite para este jogo. Recarregue a página.");
         } else {
-          setError("Erro ao salvar palpite.");
+          setError(`Erro ao salvar palpite (${insertError.code}: ${insertError.message}).`);
         }
         setLoading(false);
         return;
