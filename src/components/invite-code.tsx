@@ -11,10 +11,11 @@ interface InviteCodeProps {
 export function InviteCode({ code }: InviteCodeProps) {
   const [copied, setCopied] = useState(false);
 
-  const inviteUrl = `${window.location.origin}/join/${code}`;
+  const getInviteUrl = () =>
+    `${window.location.origin}/join/${code}`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(inviteUrl);
+    navigator.clipboard.writeText(getInviteUrl());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
