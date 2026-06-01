@@ -42,13 +42,13 @@ export function PredictionForm({
       return;
     }
 
-    const homeValue = homeScore.trim() === "" ? "0" : homeScore.trim();
-    const awayValue = awayScore.trim() === "" ? "0" : awayScore.trim();
-    const home = Number(homeValue);
-    const away = Number(awayValue);
+    const homeValue = homeScore.replace(/[^0-9]/g, "");
+    const awayValue = awayScore.replace(/[^0-9]/g, "");
+    const home = homeValue === "" ? 0 : parseInt(homeValue, 10);
+    const away = awayValue === "" ? 0 : parseInt(awayValue, 10);
 
-    if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0) {
-      setError("Informe placares validos (numeros inteiros >= 0).");
+    if (isNaN(home) || isNaN(away) || home < 0 || away < 0 || home > 20 || away > 20) {
+      setError("Informe placares validos (0 a 20).");
       return;
     }
 
@@ -102,22 +102,24 @@ export function PredictionForm({
               <span className="text-[10px] font-bold text-muted-foreground">{match.home_team}</span>
             </div>
             <Input
-              type="number"
-              min="0"
-              max="20"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={2}
               className="w-16 h-14 text-center text-2xl font-black bg-background/50 border-border/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl"
               value={homeScore}
-              onChange={(e) => setHomeScore(e.target.value)}
+              onChange={(e) => setHomeScore(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder="0"
             />
             <span className="text-muted-foreground font-black text-2xl">:</span>
             <Input
-              type="number"
-              min="0"
-              max="20"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={2}
               className="w-16 h-14 text-center text-2xl font-black bg-background/50 border-border/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl"
               value={awayScore}
-              onChange={(e) => setAwayScore(e.target.value)}
+              onChange={(e) => setAwayScore(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder="0"
             />
             <div className="flex flex-col items-center gap-1.5">
