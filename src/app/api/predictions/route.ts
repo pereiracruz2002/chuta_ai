@@ -4,8 +4,13 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 
 // Admin client para bypass de RLS (validação manual)
 function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    throw new Error("Variáveis SUPABASE não configuradas no servidor.");
+  }
+
   return createClient(url, serviceKey);
 }
 
@@ -125,9 +130,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Erro desconhecido";
+    console.error("Predictions API error:", message);
     return NextResponse.json(
-      { error: "Erro interno do servidor." },
+      { error: message },
       { status: 500 }
     );
   }
