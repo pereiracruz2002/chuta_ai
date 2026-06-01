@@ -21,6 +21,19 @@ export default async function AuthenticatedLayout({
     .eq("id", user.id)
     .single();
 
+  // Sync avatar from Google OAuth if it changed
+  const authAvatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+  if (profile && authAvatarUrl && profile.avatar_url !== authAvatarUrl) {
+    await supabase
+      .from("users")
+      .update({ avatar_url: authAvatarUrl })
+      .eq("id", user.id);
+
+    if (profile) {
+      profile.avatar_url = authAvatarUrl;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background relative">
       {/* Background effects */}
