@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { PoolTabs } from "@/components/pool-tabs";
 import { InviteCode } from "@/components/invite-code";
@@ -8,6 +9,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { Settings, Users, Trophy } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+function getSupabaseAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 interface PoolPageProps {
   params: Promise<{ id: string }>;
@@ -56,8 +64,9 @@ export default async function PoolPage({ params }: PoolPageProps) {
     );
   }
 
-  // Get user predictions for this pool
-  const { data: predictions } = await supabase
+  // Get user predictions for this pool (bypass RLS)
+  const admin = getSupabaseAdmin();
+  const { data: predictions } = await admin
     .from("predictions")
     .select("*")
     .eq("pool_id", id)
