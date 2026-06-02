@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 // Admin client para bypass de RLS (validação manual)
 function getSupabaseAdmin() {
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      revalidatePath(`/pools/${pool_id}`);
       return NextResponse.json({ success: true, prediction: updated });
     } else {
       // Insert novo
@@ -147,6 +149,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      revalidatePath(`/pools/${pool_id}`);
       return NextResponse.json({ success: true, prediction: inserted });
     }
   } catch (err) {
