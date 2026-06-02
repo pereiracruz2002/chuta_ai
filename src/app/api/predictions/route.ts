@@ -86,9 +86,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert: atualizar se já existe, inserir se não
-    if (prediction_id) {
+    // Verificar se já existe um palpite para este jogo/bolão/usuário
+    const { data: existing } = await admin
+      .from("predictions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("pool_id", pool_id)
+      .eq("match_id", match_id)
+      .single();
+
+    if (existing || prediction_id) {
       // Update existente
+      const updateId = prediction_id || existing?.id;
       const { error: updateError } = await admin
         .from("predictions")
         .update({
@@ -96,34 +105,31 @@ export async function POST(request: NextRequest) {
           away_prediction: away,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", prediction_id)
-        .eq("user_id", user.id);
+        .eq("id", updateId);
 
       if (updateError) {
+        console.error("Prediction update error:", JSON.stringify(updateError));
         return NextResponse.json(
-          { error: "Erro ao atualizar palpite." },
+          { error: `Erro ao atualizar palpite: ${updateError.message}` },
           { status: 500 }
         );
       }
     } else {
-      // Insert novo (com upsert para evitar duplicatas)
+      // Insert novo
       const { error: insertError } = await admin
         .from("predictions")
-        .upsert(
-          {
-            user_id: user.id,
-            pool_id,
-            match_id,
-            home_prediction: home,
-            away_prediction: away,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,pool_id,match_id" }
-        );
+        .insert({
+          user_id: user.id,
+          pool_id,
+          match_id,
+          home_prediction: home,
+          away_prediction: away,
+        });
 
       if (insertError) {
+        console.error("Prediction insert error:", JSON.stringify(insertError));
         return NextResponse.json(
-          { error: "Erro ao salvar palpite." },
+          { error: `Erro ao salvar palpite: ${insertError.message}` },
           { status: 500 }
         );
       }
