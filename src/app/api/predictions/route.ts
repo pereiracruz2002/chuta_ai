@@ -93,19 +93,21 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .eq("pool_id", pool_id)
       .eq("match_id", match_id)
-      .single();
+      .maybeSingle();
 
     if (existing || prediction_id) {
       // Update existente
       const updateId = prediction_id || existing?.id;
-      const { error: updateError } = await admin
+      const { data: updated, error: updateError } = await admin
         .from("predictions")
         .update({
           home_prediction: home,
           away_prediction: away,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", updateId);
+        .eq("id", updateId)
+        .select()
+        .single();
 
       if (updateError) {
         console.error("Prediction update error:", JSON.stringify(updateError));
@@ -114,9 +116,11 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+
+      return NextResponse.json({ success: true, prediction: updated });
     } else {
       // Insert novo
-      const { error: insertError } = await admin
+      const { data: inserted, error: insertError } = await admin
         .from("predictions")
         .insert({
           user_id: user.id,
@@ -124,7 +128,9 @@ export async function POST(request: NextRequest) {
           match_id,
           home_prediction: home,
           away_prediction: away,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) {
         console.error("Prediction insert error:", JSON.stringify(insertError));
@@ -133,9 +139,16 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-    }
 
-    return NextResponse.json({ success: true });
+      if (!inserted) {
+        return NextResponse.json(
+          { error: "Palpite não foi salvo (retorno vazio)." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, prediction: inserted });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
     console.error("Predictions API error:", message);

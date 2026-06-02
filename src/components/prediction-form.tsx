@@ -69,6 +69,7 @@ export function PredictionForm({
       });
 
       const data = await res.json();
+      console.log("Prediction API response:", data);
 
       if (!res.ok) {
         setError(data.error || "Erro ao salvar palpite.");
