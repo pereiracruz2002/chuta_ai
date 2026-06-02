@@ -7,6 +7,8 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Settings, Users, Trophy } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface PoolPageProps {
   params: Promise<{ id: string }>;
 }
@@ -53,9 +55,6 @@ export default async function PoolPage({ params }: PoolPageProps) {
       </div>
     );
   }
-
-  // Debug info - REMOVER DEPOIS
-  console.log("[DEBUG MATCHES]", { count, status, matchesLength: matches?.length, firstMatch: matches?.[0] });
 
   // Get user predictions for this pool
   const { data: predictions } = await supabase
