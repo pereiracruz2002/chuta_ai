@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +30,6 @@ export function PredictionForm({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +82,7 @@ export function PredictionForm({
 
     setLoading(false);
     onClose();
-    router.refresh();
+    window.location.reload();
   };
 
   return (
