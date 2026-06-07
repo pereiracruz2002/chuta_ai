@@ -63,10 +63,19 @@ export function AdminMatchList({ matches, poolId }: AdminMatchListProps) {
 
   const formatDate = (date: string) => {
     const d = new Date(date);
-    const day = String(d.getUTCDate()).padStart(2, "0");
-    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const hours = String(d.getUTCHours()).padStart(2, "0");
-    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    const formatter = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(d);
+    const day = parts.find(p => p.type === "day")?.value;
+    const month = parts.find(p => p.type === "month")?.value;
+    const hours = parts.find(p => p.type === "hour")?.value;
+    const minutes = parts.find(p => p.type === "minute")?.value;
     return `${day}/${month} - ${hours}:${minutes}`;
   };
 

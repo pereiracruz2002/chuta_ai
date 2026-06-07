@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PredictionForm } from "@/components/prediction-form";
 import { TeamFlag } from "@/components/team-flag";
-import { Clock, CheckCircle2, Radio } from "lucide-react";
+import { Clock, CheckCircle2, Radio, RefreshCw, Loader2 } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface MatchListProps {
@@ -18,6 +20,49 @@ interface MatchListProps {
 export function MatchList({ matches, predictions, poolId, userId }: MatchListProps) {
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const router = useRouter();
+
+  const handleSyncResults = async () => {
+    // Rate limit: impedir cliques em menos de 30 segundos
+    const timeSinceLastSync = Date.now() - lastSyncTime;
+    if (timeSinceLastSync < 30000) {
+      const remaining = Math.ceil((30000 - timeSinceLastSync) / 1000);
+      setSyncResult(`Aguarde ${remaining}s para buscar novamente.`);
+      setTimeout(() => setSyncResult(null), 3000);
+      return;
+    }
+
+    setSyncing(true);
+    setSyncResult(null);
+
+    try {
+      const response = await fetch("/api/update-results", {
+        headers: {
+          "x-manual-trigger": "true",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setSyncResult(`Erro: ${data.error}`);
+      } else if (data.updated > 0) {
+        setSyncResult(`${data.updated} jogo(s) atualizado(s)!`);
+        router.refresh();
+      } else {
+        setSyncResult(data.message || "Nenhum jogo para atualizar.");
+      }
+    } catch {
+      setSyncResult("Erro de conexão ao buscar resultados.");
+    }
+
+    setLastSyncTime(Date.now());
+    setSyncing(false);
+    setTimeout(() => setSyncResult(null), 5000);
+  };
 
   useEffect(() => {
     setNow(new Date());
@@ -58,10 +103,19 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
 
   const formatDate = (date: string) => {
     const d = new Date(date);
-    const day = String(d.getUTCDate()).padStart(2, "0");
-    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const hours = String(d.getUTCHours()).padStart(2, "0");
-    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    const formatter = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(d);
+    const day = parts.find(p => p.type === "day")?.value;
+    const month = parts.find(p => p.type === "month")?.value;
+    const hours = parts.find(p => p.type === "hour")?.value;
+    const minutes = parts.find(p => p.type === "minute")?.value;
     return `${day}/${month} - ${hours}:${minutes}`;
   };
 
@@ -76,6 +130,36 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
 
   return (
     <div className="space-y-10">
+      {/* Botão Buscar Resultados - visível para todos os participantes */}
+      <div className="flex flex-col items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSyncResults}
+          disabled={syncing}
+          className="cursor-pointer gap-1.5 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+        >
+          {syncing ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3.5 h-3.5" />
+          )}
+          {syncing ? "Buscando..." : "Buscar resultados"}
+        </Button>
+
+        {syncResult && (
+          <div className={`rounded-lg px-4 py-2 text-center text-sm font-medium ${
+            syncResult.startsWith("Erro")
+              ? "bg-destructive/10 border border-destructive/20 text-destructive"
+              : syncResult.includes("atualizado")
+              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+              : "bg-muted/50 border border-border/50 text-muted-foreground"
+          }`}>
+            {syncResult}
+          </div>
+        )}
+      </div>
+
       {Object.entries(grouped).map(([stage, stageMatches]) => (
         <div key={stage} className="space-y-4">
           {/* Stage divider */}
