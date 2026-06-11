@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -219,19 +218,28 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
 
     setLoading(true);
     setError("");
-    const supabase = createClient();
 
-    const { error: updateError } = await supabase
-      .from("matches")
-      .update({
-        home_score: home,
-        away_score: away,
-        finished,
-      })
-      .eq("id", match.id);
+    try {
+      const res = await fetch("/api/admin/match-result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          match_id: match.id,
+          home_score: home,
+          away_score: away,
+          finished,
+        }),
+      });
 
-    if (updateError) {
-      setError("Erro ao atualizar resultado.");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erro ao atualizar resultado.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Erro de conexão.");
       setLoading(false);
       return;
     }
