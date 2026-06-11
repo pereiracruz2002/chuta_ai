@@ -72,6 +72,12 @@ export default async function PoolPage({ params }: PoolPageProps) {
     .eq("pool_id", id)
     .eq("user_id", user.id);
 
+  // Get ALL predictions for this pool (para mostrar palpites dos outros quando jogo começar)
+  const { data: allPredictions } = await admin
+    .from("predictions")
+    .select("*, users(name, avatar_url)")
+    .eq("pool_id", id);
+
   return (
     <div className="space-y-8">
       {/* Pool Header */}
@@ -107,6 +113,7 @@ export default async function PoolPage({ params }: PoolPageProps) {
         matches={matches || []}
         members={members || []}
         predictions={predictions || []}
+        allPredictions={allPredictions || []}
         userId={user.id}
         isOwner={isOwner}
       />

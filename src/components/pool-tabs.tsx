@@ -13,6 +13,7 @@ interface PoolTabsProps {
   matches: any[];
   members: any[];
   predictions: any[];
+  allPredictions: any[];
   userId: string;
   isOwner: boolean;
 }
@@ -22,6 +23,7 @@ export function PoolTabs({
   matches,
   members,
   predictions,
+  allPredictions,
   userId,
 }: PoolTabsProps) {
   return (
@@ -49,6 +51,7 @@ export function PoolTabs({
         <MatchList
           matches={matches}
           predictions={predictions}
+          allPredictions={allPredictions}
           poolId={poolId}
           userId={userId}
         />

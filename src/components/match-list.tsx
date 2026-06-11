@@ -13,11 +13,12 @@ import { Clock, CheckCircle2, Radio, RefreshCw, Loader2 } from "lucide-react";
 interface MatchListProps {
   matches: any[];
   predictions: any[];
+  allPredictions: any[];
   poolId: string;
   userId: string;
 }
 
-export function MatchList({ matches, predictions, poolId, userId }: MatchListProps) {
+export function MatchList({ matches, predictions, allPredictions, poolId, userId }: MatchListProps) {
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -95,6 +96,9 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
 
   const getPrediction = (matchId: string) =>
     predictions.find((p: any) => p.match_id === matchId);
+
+  const getMatchPredictions = (matchId: string) =>
+    allPredictions.filter((p: any) => p.match_id === matchId);
 
   const isMatchStarted = (startsAt: string) => {
     if (!now) return false;
@@ -255,37 +259,67 @@ export function MatchList({ matches, predictions, poolId, userId }: MatchListPro
                       </div>
 
                       {/* Prediction info */}
-                      {prediction ? (
+                      {prediction && !started && !match.finished ? (
                         <div className="mt-4 pt-3 border-t border-border/30 flex items-center justify-center gap-3">
                           <span className="text-xs text-muted-foreground font-medium">Seu palpite:</span>
                           <span className="font-bold text-sm bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg text-emerald-700 dark:text-emerald-300">
                             {prediction.home_prediction} x {prediction.away_prediction}
                           </span>
-                          {match.finished && (
-                            <Badge
-                              variant={prediction.points > 0 ? "default" : "secondary"}
-                              className={`text-[10px] font-bold ${
-                                prediction.points >= 7
-                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                  : prediction.points > 0
-                                  ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
-                                  : "bg-muted/50"
-                              }`}
-                            >
-                              +{prediction.points} pts
-                            </Badge>
-                          )}
                         </div>
+                      ) : (started || match.finished) ? (
+                        (() => {
+                          const matchPredictions = getMatchPredictions(match.id);
+                          if (matchPredictions.length === 0) return null;
+                          return (
+                            <div className="mt-4 pt-3 border-t border-border/30">
+                              <p className="text-xs text-muted-foreground font-medium text-center mb-2">
+                                Palpites dos participantes:
+                              </p>
+                              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                {matchPredictions.map((p: any) => (
+                                  <div
+                                    key={p.id}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${
+                                      p.user_id === userId
+                                        ? "bg-emerald-500/10 border border-emerald-500/20"
+                                        : "bg-muted/30"
+                                    }`}
+                                  >
+                                    <span className={`font-medium truncate max-w-[120px] ${
+                                      p.user_id === userId ? "text-emerald-700 dark:text-emerald-300" : ""
+                                    }`}>
+                                      {p.users?.name || "Usuário"}
+                                      {p.user_id === userId && " (você)"}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold">
+                                        {p.home_prediction} x {p.away_prediction}
+                                      </span>
+                                      {match.finished && (
+                                        <Badge
+                                          variant={p.points > 0 ? "default" : "secondary"}
+                                          className={`text-[10px] font-bold px-1.5 py-0 ${
+                                            p.points >= 7
+                                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                              : p.points > 0
+                                              ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                                              : "bg-muted/50"
+                                          }`}
+                                        >
+                                          +{p.points}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()
                       ) : !started && !match.finished ? (
                         <div className="mt-4 pt-3 border-t border-border/30 text-center">
                           <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                             Toque para registrar seu palpite
-                          </span>
-                        </div>
-                      ) : started && !match.finished ? (
-                        <div className="mt-4 pt-3 border-t border-border/30 text-center">
-                          <span className="text-xs text-red-500 dark:text-red-400 font-semibold">
-                            Palpites encerrados para este jogo
                           </span>
                         </div>
                       ) : null}
