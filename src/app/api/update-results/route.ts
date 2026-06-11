@@ -83,40 +83,60 @@ interface FootballDataMatch {
   };
 }
 
-async function fetchFromFootballData(): Promise<
-  { home_team: string; away_team: string; home_score: number; away_score: number }[]
-> {
+async function fetchFromFootballData(): Promise<{
+  results: { home_team: string; away_team: string; home_score: number; away_score: number }[];
+  debug?: string;
+}> {
   const apiKey = process.env.FOOTBALL_DATA_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) return { results: [] };
 
-  // WC = World Cup na football-data.org
-  const response = await fetch(
-    `https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED`,
-    {
-      headers: { "X-Auth-Token": apiKey },
-      cache: "no-store",
+  // Tentar World Cup 2026 na football-data.org
+  // Possíveis códigos: WC (genérico), ou ID numérico
+  const endpoints = [
+    "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
+    "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED",
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const response = await fetch(url, {
+        headers: { "X-Auth-Token": apiKey },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        console.log(`football-data.org ${url} retornou ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const matches: FootballDataMatch[] = data.matches || [];
+
+      if (matches.length === 0) continue;
+
+      const results: { home_team: string; away_team: string; home_score: number; away_score: number }[] = [];
+
+      for (const m of matches) {
+        if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) continue;
+        if (m.score.fullTime.home === null || m.score.fullTime.away === null) continue;
+
+        results.push({
+          home_team: mapTeamName(m.homeTeam.name),
+          away_team: mapTeamName(m.awayTeam.name),
+          home_score: m.score.fullTime.home,
+          away_score: m.score.fullTime.away,
+        });
+      }
+
+      if (results.length > 0) {
+        return { results };
+      }
+    } catch (e) {
+      console.error(`Erro ao buscar ${url}:`, e);
     }
-  );
-
-  if (!response.ok) return [];
-
-  const data = await response.json();
-  const matches: FootballDataMatch[] = data.matches || [];
-  const results: { home_team: string; away_team: string; home_score: number; away_score: number }[] = [];
-
-  for (const m of matches) {
-    if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) continue;
-    if (m.score.fullTime.home === null || m.score.fullTime.away === null) continue;
-
-    results.push({
-      home_team: mapTeamName(m.homeTeam.name),
-      away_team: mapTeamName(m.awayTeam.name),
-      home_score: m.score.fullTime.home,
-      away_score: m.score.fullTime.away,
-    });
   }
 
-  return results;
+  return { results: [], debug: "football-data.org não retornou jogos finalizados" };
 }
 
 // ==========================================
@@ -156,24 +176,35 @@ export async function GET(request: Request) {
 
     // Tentar buscar resultados de APIs disponíveis
     let finishedResults = await fetchFromApiFootball();
+    let debugInfo = "";
 
     if (finishedResults.length === 0) {
-      finishedResults = await fetchFromFootballData();
+      const footballData = await fetchFromFootballData();
+      finishedResults = footballData.results;
+      if (footballData.debug) debugInfo = footballData.debug;
     }
 
     if (finishedResults.length === 0) {
       const hasAnyKey = process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_DATA_API_KEY;
       if (!hasAnyKey) {
         return NextResponse.json({
-          message: "Nenhuma API de resultados configurada. Configure API_FOOTBALL_KEY ou FOOTBALL_DATA_API_KEY nas variáveis de ambiente, ou insira os resultados manualmente pelo painel admin.",
+          message: "Nenhuma API de resultados configurada. Configure API_FOOTBALL_KEY ou FOOTBALL_DATA_API_KEY, ou insira os resultados manualmente pelo painel admin.",
           updated: 0,
           pending: pendingMatches.length,
         });
       }
+
+      // Listar jogos pendentes para debug
+      const pendingNames = pendingMatches.map(
+        (m: any) => `${m.home_team} vs ${m.away_team}`
+      );
+
       return NextResponse.json({
-        message: "Nenhum resultado finalizado encontrado na API. Os jogos podem ainda estar em andamento.",
+        message: `Nenhum resultado finalizado encontrado na API para os ${pendingMatches.length} jogo(s) pendente(s). Insira manualmente pelo painel admin.`,
         updated: 0,
         pending: pendingMatches.length,
+        pending_matches: pendingNames,
+        debug: debugInfo || undefined,
       });
     }
 
