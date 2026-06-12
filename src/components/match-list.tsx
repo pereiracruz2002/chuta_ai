@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PredictionForm } from "@/components/prediction-form";
 import { TeamFlag } from "@/components/team-flag";
-import { Clock, CheckCircle2, Radio, RefreshCw, Loader2 } from "lucide-react";
+import { Clock, CheckCircle2, Radio, RefreshCw, Loader2, CalendarDays, Layers } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface MatchListProps {
@@ -18,12 +18,15 @@ interface MatchListProps {
   userId: string;
 }
 
+type SortMode = "stage" | "date";
+
 export function MatchList({ matches, predictions, allPredictions, poolId, userId }: MatchListProps) {
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [sortMode, setSortMode] = useState<SortMode>("stage");
   const router = useRouter();
 
   const handleSyncResults = async () => {
@@ -85,7 +88,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
   }, [now, selectedMatch, matches]);
 
   // Group matches by stage
-  const grouped = matches.reduce(
+  const groupedByStage = matches.reduce(
     (acc: Record<string, any[]>, match: any) => {
       if (!acc[match.stage]) acc[match.stage] = [];
       acc[match.stage].push(match);
@@ -93,6 +96,28 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
     },
     {} as Record<string, any[]>
   );
+
+  // Group matches by date (sorted chronologically)
+  const groupedByDate = [...matches]
+    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+    .reduce(
+      (acc: Record<string, any[]>, match: any) => {
+        const dateKey = new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+          weekday: "long",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(new Date(match.starts_at));
+        const formattedKey = dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
+        if (!acc[formattedKey]) acc[formattedKey] = [];
+        acc[formattedKey].push(match);
+        return acc;
+      },
+      {} as Record<string, any[]>
+    );
+
+  const grouped = sortMode === "stage" ? groupedByStage : groupedByDate;
 
   const getPrediction = (matchId: string) =>
     predictions.find((p: any) => p.match_id === matchId);
@@ -162,6 +187,38 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
             {syncResult}
           </div>
         )}
+      </div>
+
+      {/* Toggle de ordenação */}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex items-center rounded-lg border border-border/50 bg-muted/30 p-1 gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSortMode("stage")}
+            className={`cursor-pointer gap-1.5 text-xs font-semibold rounded-md px-3 py-1.5 h-auto transition-all ${
+              sortMode === "stage"
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Por Grupo
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSortMode("date")}
+            className={`cursor-pointer gap-1.5 text-xs font-semibold rounded-md px-3 py-1.5 h-auto transition-all ${
+              sortMode === "date"
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            Por Data
+          </Button>
+        </div>
       </div>
 
       {Object.entries(grouped).map(([stage, stageMatches]) => (
