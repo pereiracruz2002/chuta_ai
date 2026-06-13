@@ -26,7 +26,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
-  const [sortMode, setSortMode] = useState<SortMode>("stage");
+  const [sortMode, setSortMode] = useState<SortMode>("date");
   const router = useRouter();
 
   const handleSyncResults = async () => {
