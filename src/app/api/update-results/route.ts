@@ -13,6 +13,37 @@ function getSupabaseAdmin() {
 const FINISHED_STATUSES_API_FOOTBALL = ["FT", "AET", "PEN"];
 const FINISHED_STATUS_FOOTBALL_DATA = "FINISHED";
 
+// Cálculo de pontos (mesma lógica do /api/admin/match-result)
+function calculatePoints(
+  homePred: number,
+  awayPred: number,
+  homeScore: number,
+  awayScore: number
+): number {
+  // Placar exato
+  if (homePred === homeScore && awayPred === awayScore) return 10;
+
+  const predDiff = homePred - awayPred;
+  const actualDiff = homeScore - awayScore;
+
+  // Vencedor/empate correto?
+  const correctOutcome =
+    (predDiff > 0 && actualDiff > 0) ||
+    (predDiff < 0 && actualDiff < 0) ||
+    (predDiff === 0 && actualDiff === 0);
+
+  if (!correctOutcome) return 0;
+
+  // Saldo de gols correto
+  if (predDiff === actualDiff) return 7;
+
+  // Acertou gols de um time
+  if (homePred === homeScore || awayPred === awayScore) return 5;
+
+  // Apenas vencedor correto
+  return 3;
+}
+
 // ==========================================
 // PROVIDER 1: API-Football (api-sports.io)
 // ==========================================
@@ -211,6 +242,7 @@ export async function GET(request: Request) {
     // Atualizar jogos no banco
     let updatedCount = 0;
     const updates: string[] = [];
+    const updatedMatchIds: string[] = [];
 
     for (const match of pendingMatches) {
       const result = finishedResults.find(
@@ -230,9 +262,78 @@ export async function GET(request: Request) {
 
       if (!updateError) {
         updatedCount++;
+        updatedMatchIds.push(match.id);
         updates.push(
           `${match.home_team} ${result.home_score} x ${result.away_score} ${match.away_team}`
         );
+      }
+    }
+
+    // Recalcular pontos das previsões e ranking dos membros
+    if (updatedMatchIds.length > 0) {
+      for (const matchId of updatedMatchIds) {
+        // Buscar o resultado final do jogo
+        const { data: matchData } = await supabase
+          .from("matches")
+          .select("home_score, away_score")
+          .eq("id", matchId)
+          .single();
+
+        if (!matchData) continue;
+
+        // Buscar todas as previsões deste jogo
+        const { data: predictions } = await supabase
+          .from("predictions")
+          .select("id, home_prediction, away_prediction, pool_id, user_id")
+          .eq("match_id", matchId);
+
+        if (!predictions || predictions.length === 0) continue;
+
+        // Calcular e atualizar pontos de cada previsão
+        for (const pred of predictions) {
+          const points = calculatePoints(
+            pred.home_prediction,
+            pred.away_prediction,
+            matchData.home_score,
+            matchData.away_score
+          );
+
+          await supabase
+            .from("predictions")
+            .update({ points, updated_at: new Date().toISOString() })
+            .eq("id", pred.id);
+        }
+
+        // Recalcular score total dos membros nos bolões afetados
+        const affectedPools = [...new Set(predictions.map((p) => p.pool_id))];
+
+        for (const poolId of affectedPools) {
+          const { data: members } = await supabase
+            .from("pool_members")
+            .select("user_id")
+            .eq("pool_id", poolId);
+
+          if (!members) continue;
+
+          for (const member of members) {
+            const { data: memberPreds } = await supabase
+              .from("predictions")
+              .select("points")
+              .eq("pool_id", poolId)
+              .eq("user_id", member.user_id);
+
+            const totalScore = memberPreds?.reduce(
+              (sum, p) => sum + (p.points || 0),
+              0
+            ) || 0;
+
+            await supabase
+              .from("pool_members")
+              .update({ score: totalScore })
+              .eq("pool_id", poolId)
+              .eq("user_id", member.user_id);
+          }
+        }
       }
     }
 
