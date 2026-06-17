@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Trophy, Sun, Moon } from "lucide-react";
+import { LogOut, Trophy, Sun, Moon, Settings } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
 interface HeaderProps {
@@ -69,6 +69,16 @@ export function Header({ user }: HeaderProps) {
               </Avatar>
             </>
           )}
+          <Link href="/settings">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Configuracoes"
+              className="cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </Link>
           <Button
             variant="ghost"
             size="icon-sm"
