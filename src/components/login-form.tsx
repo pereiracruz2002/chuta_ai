@@ -157,6 +157,14 @@ export function LoginForm() {
                 minLength={6}
                 className="h-11 bg-background/50 border-border/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-colors"
               />
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-500 dark:hover:text-emerald-300 transition-colors"
+                >
+                  Esqueci minha senha
+                </Link>
+              </div>
             </div>
             {error && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2.5">

@@ -19,13 +19,17 @@ export async function GET(request: Request) {
     }
   }
 
-  // Handle email confirmation (signup verification)
+  // Handle email confirmation (signup verification) and password recovery
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     });
     if (!error) {
+      // Password recovery: redirect to reset password page
+      if (type === "recovery") {
+        return NextResponse.redirect(`${origin}/reset-password`);
+      }
       // Email confirmed successfully, redirect to login
       return NextResponse.redirect(`${origin}/login?confirmed=true`);
     }
