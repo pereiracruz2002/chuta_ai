@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,8 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [sortMode, setSortMode] = useState<SortMode>("date");
+  const todayRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
   const router = useRouter();
 
   const handleSyncResults = async () => {
@@ -118,6 +120,48 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
     );
 
   const grouped = sortMode === "stage" ? groupedByStage : groupedByDate;
+
+  // Calcula a chave de hoje no mesmo formato usado pelo agrupamento por data
+  const todayKey = (() => {
+    const today = new Date();
+    const dateKey = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(today);
+    return dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
+  })();
+
+  // Encontra a chave mais próxima (hoje ou o próximo dia com jogos)
+  const scrollTargetKey = (() => {
+    if (sortMode !== "date") return null;
+    const keys = Object.keys(groupedByDate);
+    // Se existe hoje exatamente, usa
+    if (keys.includes(todayKey)) return todayKey;
+    // Senão, encontra o próximo dia com jogos (primeiro dia futuro)
+    const todayTime = new Date().setHours(0, 0, 0, 0);
+    for (const key of keys) {
+      const firstMatch = groupedByDate[key]?.[0];
+      if (firstMatch) {
+        const matchDate = new Date(firstMatch.starts_at).getTime();
+        if (matchDate >= todayTime) return key;
+      }
+    }
+    return null;
+  })();
+
+  // Auto-scroll para os jogos de hoje/próximos ao montar o componente
+  useEffect(() => {
+    if (sortMode === "date" && todayRef.current && !hasScrolled.current) {
+      hasScrolled.current = true;
+      // Pequeno delay para garantir que o DOM está renderizado
+      setTimeout(() => {
+        todayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [sortMode, scrollTargetKey]);
 
   const getPrediction = (matchId: string) =>
     predictions.find((p: any) => p.match_id === matchId);
@@ -222,7 +266,11 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
       </div>
 
       {Object.entries(grouped).map(([stage, stageMatches]) => (
-        <div key={stage} className="space-y-4">
+        <div
+          key={stage}
+          className="space-y-4"
+          ref={sortMode === "date" && stage === scrollTargetKey ? todayRef : undefined}
+        >
           {/* Stage divider */}
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/40 to-transparent" />
