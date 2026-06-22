@@ -134,10 +134,30 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
     return dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
   })();
 
-  // Encontra a chave mais próxima (hoje ou o próximo dia com jogos)
+  // Verifica se há uma data salva no sessionStorage (após salvar um palpite)
+  const savedMatchDate = (() => {
+    if (typeof window === "undefined") return null;
+    const saved = sessionStorage.getItem("scrollToMatchDate");
+    if (saved) {
+      sessionStorage.removeItem("scrollToMatchDate");
+      const dateKey = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(new Date(saved));
+      return dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
+    }
+    return null;
+  })();
+
+  // Encontra a chave mais próxima (data salva, hoje, ou o próximo dia com jogos)
   const scrollTargetKey = (() => {
     if (sortMode !== "date") return null;
     const keys = Object.keys(groupedByDate);
+    // Se há uma data salva do jogo recém-editado, usa ela
+    if (savedMatchDate && keys.includes(savedMatchDate)) return savedMatchDate;
     // Se existe hoje exatamente, usa
     if (keys.includes(todayKey)) return todayKey;
     // Senão, encontra o próximo dia com jogos (primeiro dia futuro)

@@ -82,6 +82,9 @@ export function PredictionForm({
 
     setLoading(false);
     onClose();
+    // Salva a data do jogo no sessionStorage para que, após o reload,
+    // a página volte para o mesmo dia do jogo salvo
+    sessionStorage.setItem("scrollToMatchDate", match.starts_at);
     window.location.reload();
   };
 
