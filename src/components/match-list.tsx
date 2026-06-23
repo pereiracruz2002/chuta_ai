@@ -136,9 +136,13 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
     {} as Record<string, any[]>
   );
 
-  // Group matches by date (sorted chronologically)
+  // Group matches by date (sorted chronologically, or reverse for finished)
+  const sortAsc = statusFilter !== "finished";
   const groupedByDate = [...filteredMatches]
-    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+    .sort((a, b) => sortAsc
+      ? new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+      : new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()
+    )
     .reduce(
       (acc: Record<string, any[]>, match: any) => {
         const dateKey = new Intl.DateTimeFormat("pt-BR", {
