@@ -5,6 +5,7 @@ import { MatchList } from "@/components/match-list";
 import { RankingTable } from "@/components/ranking-table";
 import { MembersList } from "@/components/members-list";
 import { ScoringRules } from "@/components/scoring-rules";
+import { MiniRanking } from "@/components/mini-ranking";
 import { Trophy, Users, CalendarDays, BookOpen } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -47,7 +48,8 @@ export function PoolTabs({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="matches" className="mt-6">
+      <TabsContent value="matches" className="mt-6 space-y-4">
+        <MiniRanking members={members} userId={userId} />
         <MatchList
           matches={matches}
           predictions={predictions}

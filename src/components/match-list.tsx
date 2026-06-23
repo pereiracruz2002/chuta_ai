@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PredictionForm } from "@/components/prediction-form";
 import { TeamFlag } from "@/components/team-flag";
-import { Clock, CheckCircle2, Radio, RefreshCw, Loader2, CalendarDays, Layers } from "lucide-react";
+import { Clock, CheckCircle2, Radio, RefreshCw, Loader2, CalendarDays, Layers, CircleDot, Timer, CircleCheck } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface MatchListProps {
@@ -19,6 +19,7 @@ interface MatchListProps {
 }
 
 type SortMode = "stage" | "date";
+type StatusFilter = "upcoming" | "live" | "finished" | "all";
 
 export function MatchList({ matches, predictions, allPredictions, poolId, userId }: MatchListProps) {
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [sortMode, setSortMode] = useState<SortMode>("date");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("upcoming");
   const todayRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
   const router = useRouter();
@@ -89,8 +91,43 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
     }
   }, [now, selectedMatch, matches]);
 
+  // Filtra jogos pelo status selecionado
+  const filteredMatches = (() => {
+    if (!now) return matches;
+    switch (statusFilter) {
+      case "upcoming":
+        return matches.filter((m: any) => !m.finished && new Date(m.starts_at) > now);
+      case "live":
+        return matches.filter((m: any) => !m.finished && new Date(m.starts_at) <= now);
+      case "finished":
+        return matches.filter((m: any) => m.finished);
+      case "all":
+      default:
+        return matches;
+    }
+  })();
+
+  // Contadores para as badges dos filtros
+  const filterCounts = (() => {
+    if (!now) return { upcoming: 0, live: 0, finished: 0 };
+    return {
+      upcoming: matches.filter((m: any) => !m.finished && new Date(m.starts_at) > now).length,
+      live: matches.filter((m: any) => !m.finished && new Date(m.starts_at) <= now).length,
+      finished: matches.filter((m: any) => m.finished).length,
+    };
+  })();
+
+  // Se o filtro atual não tem jogos e outro tem, ajusta automaticamente
+  useEffect(() => {
+    if (!now) return;
+    if (statusFilter === "upcoming" && filterCounts.upcoming === 0) {
+      if (filterCounts.live > 0) setStatusFilter("live");
+      else if (filterCounts.finished > 0) setStatusFilter("all");
+    }
+  }, [now, filterCounts.upcoming, filterCounts.live, filterCounts.finished, statusFilter]);
+
   // Group matches by stage
-  const groupedByStage = matches.reduce(
+  const groupedByStage = filteredMatches.reduce(
     (acc: Record<string, any[]>, match: any) => {
       if (!acc[match.stage]) acc[match.stage] = [];
       acc[match.stage].push(match);
@@ -100,7 +137,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
   );
 
   // Group matches by date (sorted chronologically)
-  const groupedByDate = [...matches]
+  const groupedByDate = [...filteredMatches]
     .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
     .reduce(
       (acc: Record<string, any[]>, match: any) => {
@@ -253,6 +290,73 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
         )}
       </div>
 
+      {/* Filtros de status */}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex items-center rounded-xl border border-border/50 bg-muted/30 p-1 gap-1 flex-wrap justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter("upcoming")}
+            className={`cursor-pointer gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 h-auto transition-all ${
+              statusFilter === "upcoming"
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Timer className="w-3.5 h-3.5" />
+            Próximos
+            {filterCounts.upcoming > 0 && (
+              <span className="ml-0.5 text-[10px] bg-emerald-500/20 px-1.5 rounded-full">{filterCounts.upcoming}</span>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter("live")}
+            className={`cursor-pointer gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 h-auto transition-all ${
+              statusFilter === "live"
+                ? "bg-red-500/15 text-red-500 dark:text-red-400 border border-red-500/30 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CircleDot className="w-3.5 h-3.5" />
+            Ao Vivo
+            {filterCounts.live > 0 && (
+              <span className="ml-0.5 text-[10px] bg-red-500/20 px-1.5 rounded-full">{filterCounts.live}</span>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter("finished")}
+            className={`cursor-pointer gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 h-auto transition-all ${
+              statusFilter === "finished"
+                ? "bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/30 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CircleCheck className="w-3.5 h-3.5" />
+            Encerrados
+            {filterCounts.finished > 0 && (
+              <span className="ml-0.5 text-[10px] bg-blue-500/20 px-1.5 rounded-full">{filterCounts.finished}</span>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+            className={`cursor-pointer gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 h-auto transition-all ${
+              statusFilter === "all"
+                ? "bg-purple-500/15 text-purple-500 dark:text-purple-400 border border-purple-500/30 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            Todos
+          </Button>
+        </div>
+      </div>
+
       {/* Toggle de ordenação */}
       <div className="flex items-center justify-center">
         <div className="inline-flex items-center rounded-lg border border-border/50 bg-muted/30 p-1 gap-1">
@@ -284,6 +388,25 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
           </Button>
         </div>
       </div>
+
+      {/* Mensagem quando filtro não tem resultados */}
+      {filteredMatches.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground font-medium text-sm">
+            {statusFilter === "upcoming" && "Nenhum jogo próximo no momento."}
+            {statusFilter === "live" && "Nenhum jogo ao vivo no momento."}
+            {statusFilter === "finished" && "Nenhum jogo encerrado ainda."}
+          </p>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+            className="mt-2 text-emerald-600 dark:text-emerald-400 cursor-pointer"
+          >
+            Ver todos os jogos
+          </Button>
+        </div>
+      )}
 
       {Object.entries(grouped).map(([stage, stageMatches]) => (
         <div
