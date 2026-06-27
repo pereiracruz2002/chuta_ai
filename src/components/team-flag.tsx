@@ -1,6 +1,6 @@
 "use client";
 
-import { getFlagUrl } from "@/lib/teams";
+import { getFlagUrl, getCountryCode } from "@/lib/teams";
 
 interface TeamFlagProps {
   team: string;
@@ -9,6 +9,7 @@ interface TeamFlagProps {
 }
 
 export function TeamFlag({ team, size = 40, className = "" }: TeamFlagProps) {
+  const hasFlag = !!getCountryCode(team);
   const flagUrl = getFlagUrl(team, size * 2); // 2x for retina
 
   return (
@@ -17,15 +18,24 @@ export function TeamFlag({ team, size = 40, className = "" }: TeamFlagProps) {
         className="rounded-sm overflow-hidden shadow-sm border border-border/50"
         style={{ width: size, height: size * 0.75 }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={flagUrl}
-          alt={`Bandeira ${team}`}
-          width={size}
-          height={size * 0.75}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+        {hasFlag ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={flagUrl}
+            alt={`Bandeira ${team}`}
+            width={size}
+            height={size * 0.75}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div
+            className="w-full h-full bg-muted/50 flex items-center justify-center"
+            title={team}
+          >
+            <span className="text-muted-foreground text-xs font-bold">?</span>
+          </div>
+        )}
       </div>
     </div>
   );
