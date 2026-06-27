@@ -1,4 +1,4 @@
--- Seed: Copa do Mundo 2026 - Fase de Grupos (72 jogos)
+-- Seed: Copa do Mundo 2026 - Fase de Grupos (72 jogos) + Oitavas de Final (16 jogos)
 -- Horarios em UTC (TIMESTAMPTZ)
 -- Fonte: FIFA / Calendario oficial do sorteio
 
@@ -137,3 +137,44 @@ INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
 ('Panama', 'Croacia', '2026-06-23T23:00:00Z', 'Grupo L'),
 ('Panama', 'Inglaterra', '2026-06-27T21:00:00Z', 'Grupo L'),
 ('Croacia', 'Ghana', '2026-06-27T21:00:00Z', 'Grupo L');
+
+-- =============================================
+-- OITAVAS DE FINAL (Round of 32) - 16 jogos
+-- Horarios oficiais FIFA em UTC
+-- Times com nome real quando ja definidos
+-- Placeholders para jogos dependentes de 3o colocados
+-- =============================================
+
+-- 28 de junho (Match 73)
+INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
+('Africa do Sul', 'Canada', '2026-06-28T19:00:00Z', 'Oitavas');
+
+-- 29 de junho (Matches 74, 75, 76)
+INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
+('Brasil', 'Japao', '2026-06-29T17:00:00Z', 'Oitavas'),
+('Alemanha', '3o Grupo C/D/F', '2026-06-29T20:30:00Z', 'Oitavas'),
+('Holanda', 'Marrocos', '2026-06-30T01:00:00Z', 'Oitavas');
+
+-- 30 de junho (Matches 77, 78, 79)
+INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
+('Costa do Marfim', '2o Grupo I', '2026-06-30T17:00:00Z', 'Oitavas'),
+('1o Grupo I', '3o Grupo D/F/G', '2026-06-30T21:00:00Z', 'Oitavas'),
+('Mexico', '3o Grupo C/E/H', '2026-07-01T01:00:00Z', 'Oitavas');
+
+-- 1 de julho (Matches 80, 81, 82)
+INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
+('1o Grupo L', '3o Grupo E/I/J/K', '2026-07-01T16:00:00Z', 'Oitavas'),
+('1o Grupo G', '3o Grupo A/H/I/J', '2026-07-01T20:00:00Z', 'Oitavas'),
+('Estados Unidos', 'Bosnia e Herzegovina', '2026-07-02T00:00:00Z', 'Oitavas');
+
+-- 2 de julho (Matches 83, 84, 85)
+INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
+('1o Grupo H', '2o Grupo J', '2026-07-02T19:00:00Z', 'Oitavas'),
+('2o Grupo K', '2o Grupo L', '2026-07-02T23:00:00Z', 'Oitavas'),
+('Suica', '3o Grupo E/F/G/I/J', '2026-07-03T03:00:00Z', 'Oitavas');
+
+-- 3 de julho (Matches 86, 87, 88)
+INSERT INTO public.matches (home_team, away_team, starts_at, stage) VALUES
+('Australia', '2o Grupo G', '2026-07-03T18:00:00Z', 'Oitavas'),
+('Argentina', '2o Grupo H', '2026-07-03T22:00:00Z', 'Oitavas'),
+('1o Grupo K', '3o Grupo D/E/I/J/L', '2026-07-04T01:30:00Z', 'Oitavas');
