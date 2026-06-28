@@ -485,7 +485,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
                           {match.finished && (
                             <Badge variant="secondary" className="text-xs px-2 py-0.5 gap-1 bg-muted/50">
                               <CheckCircle2 className="w-3 h-3" />
-                              Encerrado
+                              {match.penalty_winner ? `${match.penalty_winner} nos pen.` : "Encerrado"}
                             </Badge>
                           )}
                           {!started && !match.finished && (

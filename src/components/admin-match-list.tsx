@@ -203,9 +203,15 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
   const [awayScore, setAwayScore] = useState(
     match.away_score?.toString() || ""
   );
+  const [penaltyWinner, setPenaltyWinner] = useState<string>(
+    match.penalty_winner || ""
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  const isKnockout = match.stage !== undefined && !match.stage.startsWith("Grupo");
+  const isDrawScore = homeScore !== "" && awayScore !== "" && parseInt(homeScore) === parseInt(awayScore);
 
   const handleSave = async (finished: boolean) => {
     const home = parseInt(homeScore);
@@ -213,6 +219,12 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
 
     if (isNaN(home) || isNaN(away) || home < 0 || away < 0) {
       setError("Informe placares validos.");
+      return;
+    }
+
+    // Em fase eliminatoria, se empate e finalizando, exigir penalty_winner
+    if (finished && isKnockout && home === away && !penaltyWinner) {
+      setError("Empate em fase eliminatoria: informe quem venceu nos penaltis.");
       return;
     }
 
@@ -228,6 +240,7 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
           home_score: home,
           away_score: away,
           finished,
+          penalty_winner: (isKnockout && home === away && penaltyWinner) ? penaltyWinner : null,
         }),
       });
 
@@ -289,6 +302,48 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
             <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2">
               <p className="text-xs text-destructive text-center font-medium">{error}</p>
             </div>
+          )}
+          {isKnockout && isDrawScore && (
+            <div className="space-y-2">
+              <p className="text-center text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Vencedor nos penaltis
+              </p>
+              <div className="flex justify-center gap-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={penaltyWinner === match.home_team ? "default" : "outline"}
+                  onClick={() => setPenaltyWinner(match.home_team)}
+                  className={`cursor-pointer text-xs font-bold gap-1.5 ${
+                    penaltyWinner === match.home_team
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                  }`}
+                >
+                  <TeamFlag team={match.home_team} size={16} />
+                  {match.home_team}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={penaltyWinner === match.away_team ? "default" : "outline"}
+                  onClick={() => setPenaltyWinner(match.away_team)}
+                  className={`cursor-pointer text-xs font-bold gap-1.5 ${
+                    penaltyWinner === match.away_team
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                  }`}
+                >
+                  <TeamFlag team={match.away_team} size={16} />
+                  {match.away_team}
+                </Button>
+              </div>
+            </div>
+          )}
+          {isKnockout && (
+            <p className="text-center text-[10px] text-muted-foreground">
+              Placar do tempo normal + prorrogacao (penaltis nao contam para pontuacao)
+            </p>
           )}
           <div className="flex justify-center gap-3">
             <Button type="button" variant="ghost" size="sm" onClick={onClose} className="cursor-pointer font-semibold">

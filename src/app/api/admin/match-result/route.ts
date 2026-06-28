@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { match_id, home_score, away_score, finished } = body;
+    const { match_id, home_score, away_score, finished, penalty_winner } = body;
 
     if (!match_id || home_score === undefined || away_score === undefined) {
       return NextResponse.json(
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         home_score: home,
         away_score: away,
         finished: finished ?? true,
+        penalty_winner: penalty_winner || null,
       })
       .eq("id", match_id);
 
