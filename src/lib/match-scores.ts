@@ -66,6 +66,16 @@ export interface ApiMatchResult {
   penalty_winner: string | null;
 }
 
+function shouldUseExtraTimeScore(
+  fulltime: { home: number | null; away: number | null },
+  extratime: { home: number | null; away: number | null }
+): boolean {
+  if (extratime.home == null || extratime.away == null) return false;
+  if (fulltime.home == null || fulltime.away == null) return true;
+  // extratime 0-0 com fulltime diferente = placeholder da API, nao houve prorrogação
+  return extratime.home !== fulltime.home || extratime.away !== fulltime.away;
+}
+
 export function getRegulationScoreFromApiFootball(f: {
   goals: { home: number | null; away: number | null };
   score: {
@@ -74,14 +84,39 @@ export function getRegulationScoreFromApiFootball(f: {
     penalty: { home: number | null; away: number | null };
   };
 }): { home: number; away: number } {
-  if (f.score.extratime?.home != null && f.score.extratime?.away != null) {
-    return { home: f.score.extratime.home, away: f.score.extratime.away };
-  }
-  if (f.score.fulltime?.home != null && f.score.fulltime?.away != null) {
-    return { home: f.score.fulltime.home, away: f.score.fulltime.away };
-  }
+  // goals = tempo normal + prorrogação, sem shootout (fonte mais confiável)
   if (f.goals.home != null && f.goals.away != null) {
     return { home: f.goals.home, away: f.goals.away };
   }
+
+  const fulltime = f.score.fulltime;
+  const extratime = f.score.extratime;
+
+  if (shouldUseExtraTimeScore(fulltime, extratime)) {
+    return { home: extratime.home!, away: extratime.away! };
+  }
+
+  if (fulltime?.home != null && fulltime?.away != null) {
+    return { home: fulltime.home, away: fulltime.away };
+  }
+
   throw new Error("Placar de tempo regulamentar indisponivel");
+}
+
+export function getRegulationScoreFromFootballData(score: {
+  fullTime: { home: number | null; away: number | null };
+  extraTime?: { home: number | null; away: number | null };
+}): { home: number; away: number } | null {
+  const full = score.fullTime;
+  const extra = score.extraTime;
+
+  if (shouldUseExtraTimeScore(full, extra ?? { home: null, away: null })) {
+    return { home: extra!.home!, away: extra!.away! };
+  }
+
+  if (full?.home != null && full?.away != null) {
+    return { home: full.home, away: full.away };
+  }
+
+  return null;
 }

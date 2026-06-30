@@ -4,6 +4,7 @@ import { mapTeamName } from "@/lib/team-mapping";
 import {
   type ApiMatchResult,
   getRegulationScoreFromApiFootball,
+  getRegulationScoreFromFootballData,
 } from "@/lib/match-scores";
 
 function getSupabaseAdmin() {
@@ -127,14 +128,8 @@ interface FootballDataMatch {
 function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
   if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) return null;
 
-  const extra = m.score.extraTime;
-  const full = m.score.fullTime;
-  const homeScore =
-    extra?.home != null && extra?.away != null ? extra.home : full?.home;
-  const awayScore =
-    extra?.home != null && extra?.away != null ? extra.away : full?.away;
-
-  if (homeScore == null || awayScore == null) return null;
+  const regulation = getRegulationScoreFromFootballData(m.score);
+  if (!regulation) return null;
 
   const homeTeam = mapTeamName(m.homeTeam.name);
   const awayTeam = mapTeamName(m.awayTeam.name);
@@ -150,8 +145,8 @@ function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
   return {
     home_team: homeTeam,
     away_team: awayTeam,
-    home_score: homeScore,
-    away_score: awayScore,
+    home_score: regulation.home,
+    away_score: regulation.away,
     home_penalty_score: hasPenalties ? homePen : null,
     away_penalty_score: hasPenalties ? awayPen : null,
     penalty_winner: penaltyWinner,
