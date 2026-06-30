@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PredictionForm } from "@/components/prediction-form";
 import { TeamFlag } from "@/components/team-flag";
+import { MatchScore } from "@/components/match-score";
 import { Clock, CheckCircle2, Radio, RefreshCw, Loader2, CalendarDays, Layers, CircleDot, Timer, CircleCheck } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -460,11 +461,12 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
                         {/* Score / VS */}
                         <div className="flex flex-col items-center gap-1.5 px-4">
                           {match.finished ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-3xl font-black">{match.home_score}</span>
-                              <span className="text-muted-foreground text-xl font-bold">:</span>
-                              <span className="text-3xl font-black">{match.away_score}</span>
-                            </div>
+                            <MatchScore
+                              homeScore={match.home_score}
+                              awayScore={match.away_score}
+                              homePenaltyScore={match.home_penalty_score}
+                              awayPenaltyScore={match.away_penalty_score}
+                            />
                           ) : started ? (
                             <div className="flex items-center gap-2">
                               <span className="text-2xl font-bold text-muted-foreground">-</span>
@@ -485,7 +487,11 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
                           {match.finished && (
                             <Badge variant="secondary" className="text-xs px-2 py-0.5 gap-1 bg-muted/50">
                               <CheckCircle2 className="w-3 h-3" />
-                              {match.penalty_winner ? `${match.penalty_winner} nos pen.` : "Encerrado"}
+                              {match.penalty_winner &&
+                              match.home_penalty_score == null &&
+                              match.away_penalty_score == null
+                                ? `${match.penalty_winner} nos pen.`
+                                : "Encerrado"}
                             </Badge>
                           )}
                           {!started && !match.finished && (

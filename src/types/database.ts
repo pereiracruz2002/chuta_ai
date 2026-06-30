@@ -89,6 +89,8 @@ export interface Database {
           away_score: number | null;
           finished: boolean;
           penalty_winner: string | null;
+          home_penalty_score: number | null;
+          away_penalty_score: number | null;
         };
         Insert: {
           id?: string;
@@ -100,6 +102,8 @@ export interface Database {
           away_score?: number | null;
           finished?: boolean;
           penalty_winner?: string | null;
+          home_penalty_score?: number | null;
+          away_penalty_score?: number | null;
         };
         Update: {
           id?: string;
@@ -111,6 +115,8 @@ export interface Database {
           away_score?: number | null;
           finished?: boolean;
           penalty_winner?: string | null;
+          home_penalty_score?: number | null;
+          away_penalty_score?: number | null;
         };
       };
       predictions: {

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TeamFlag } from "@/components/team-flag";
+import { MatchScore } from "@/components/match-score";
 import { ArrowLeft, CheckCircle2, Clock, RefreshCw, Loader2 } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -147,9 +148,13 @@ export function AdminMatchList({ matches, poolId }: AdminMatchListProps) {
                       </div>
                       <div className="text-center px-3">
                         {match.finished ? (
-                          <span className="font-black text-lg">
-                            {match.home_score} : {match.away_score}
-                          </span>
+                          <MatchScore
+                            homeScore={match.home_score}
+                            awayScore={match.away_score}
+                            homePenaltyScore={match.home_penalty_score}
+                            awayPenaltyScore={match.away_penalty_score}
+                            size="sm"
+                          />
                         ) : (
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Clock className="w-3 h-3" />
@@ -203,8 +208,11 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
   const [awayScore, setAwayScore] = useState(
     match.away_score?.toString() || ""
   );
-  const [penaltyWinner, setPenaltyWinner] = useState<string>(
-    match.penalty_winner || ""
+  const [homePenaltyScore, setHomePenaltyScore] = useState(
+    match.home_penalty_score?.toString() || ""
+  );
+  const [awayPenaltyScore, setAwayPenaltyScore] = useState(
+    match.away_penalty_score?.toString() || ""
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -222,11 +230,32 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
       return;
     }
 
-    // Em fase eliminatoria, se empate e finalizando, exigir penalty_winner
-    if (finished && isKnockout && home === away && !penaltyWinner) {
-      setError("Empate em fase eliminatoria: informe quem venceu nos penaltis.");
-      return;
+    const hasPenaltyScores =
+      isKnockout &&
+      home === away &&
+      homePenaltyScore !== "" &&
+      awayPenaltyScore !== "";
+    const homePen = hasPenaltyScores ? parseInt(homePenaltyScore) : NaN;
+    const awayPen = hasPenaltyScores ? parseInt(awayPenaltyScore) : NaN;
+
+    // Em fase eliminatoria, se empate e finalizando, exigir placar de penaltis
+    if (finished && isKnockout && home === away) {
+      if (isNaN(homePen) || isNaN(awayPen) || homePen < 0 || awayPen < 0) {
+        setError("Empate em fase eliminatoria: informe o placar dos penaltis.");
+        return;
+      }
+      if (homePen === awayPen) {
+        setError("Placar de penaltis nao pode ser empate.");
+        return;
+      }
     }
+
+    const resolvedPenaltyWinner =
+      hasPenaltyScores && !isNaN(homePen) && !isNaN(awayPen) && homePen !== awayPen
+        ? homePen > awayPen
+          ? match.home_team
+          : match.away_team
+        : null;
 
     setLoading(true);
     setError("");
@@ -240,7 +269,9 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
           home_score: home,
           away_score: away,
           finished,
-          penalty_winner: (isKnockout && home === away && penaltyWinner) ? penaltyWinner : null,
+          penalty_winner: resolvedPenaltyWinner,
+          home_penalty_score: hasPenaltyScores ? homePen : null,
+          away_penalty_score: hasPenaltyScores ? awayPen : null,
         }),
       });
 
@@ -268,6 +299,9 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
         <div className="space-y-5">
           <p className="text-center text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
             Atualizar resultado
+          </p>
+          <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Tempo normal + prorrogação
           </p>
           <div className="flex items-center justify-center gap-5">
             <div className="flex flex-col items-center gap-1.5">
@@ -306,43 +340,34 @@ function AdminMatchForm({ match, onClose }: AdminMatchFormProps) {
           {isKnockout && isDrawScore && (
             <div className="space-y-2">
               <p className="text-center text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                Vencedor nos penaltis
+                Placar nos penaltis
               </p>
-              <div className="flex justify-center gap-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={penaltyWinner === match.home_team ? "default" : "outline"}
-                  onClick={() => setPenaltyWinner(match.home_team)}
-                  className={`cursor-pointer text-xs font-bold gap-1.5 ${
-                    penaltyWinner === match.home_team
-                      ? "bg-amber-500 hover:bg-amber-600 text-white"
-                      : "border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-                  }`}
-                >
-                  <TeamFlag team={match.home_team} size={16} />
-                  {match.home_team}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={penaltyWinner === match.away_team ? "default" : "outline"}
-                  onClick={() => setPenaltyWinner(match.away_team)}
-                  className={`cursor-pointer text-xs font-bold gap-1.5 ${
-                    penaltyWinner === match.away_team
-                      ? "bg-amber-500 hover:bg-amber-600 text-white"
-                      : "border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-                  }`}
-                >
-                  <TeamFlag team={match.away_team} size={16} />
-                  {match.away_team}
-                </Button>
+              <div className="flex items-center justify-center gap-4">
+                <Input
+                  type="number"
+                  min="0"
+                  max="20"
+                  className="w-14 h-10 text-center text-lg font-black bg-background/50 border-amber-500/30 focus:border-amber-500/50 rounded-xl"
+                  value={homePenaltyScore}
+                  onChange={(e) => setHomePenaltyScore(e.target.value)}
+                  placeholder="0"
+                />
+                <span className="text-muted-foreground font-black text-lg">:</span>
+                <Input
+                  type="number"
+                  min="0"
+                  max="20"
+                  className="w-14 h-10 text-center text-lg font-black bg-background/50 border-amber-500/30 focus:border-amber-500/50 rounded-xl"
+                  value={awayPenaltyScore}
+                  onChange={(e) => setAwayPenaltyScore(e.target.value)}
+                  placeholder="0"
+                />
               </div>
             </div>
           )}
           {isKnockout && (
             <p className="text-center text-[10px] text-muted-foreground">
-              Placar do tempo normal + prorrogacao (penaltis nao contam para pontuacao)
+              O placar principal nao inclui penaltis (nao afeta pontuacao)
             </p>
           )}
           <div className="flex justify-center gap-3">

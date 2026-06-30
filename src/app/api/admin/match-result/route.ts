@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { match_id, home_score, away_score, finished, penalty_winner } = body;
+    const { match_id, home_score, away_score, finished, penalty_winner, home_penalty_score, away_penalty_score } = body;
 
     if (!match_id || home_score === undefined || away_score === undefined) {
       return NextResponse.json(
@@ -74,6 +74,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const homePenalty =
+      home_penalty_score !== undefined && home_penalty_score !== null && home_penalty_score !== ""
+        ? Number(home_penalty_score)
+        : null;
+    const awayPenalty =
+      away_penalty_score !== undefined && away_penalty_score !== null && away_penalty_score !== ""
+        ? Number(away_penalty_score)
+        : null;
+
+    if (
+      (homePenalty !== null && ( !Number.isInteger(homePenalty) || homePenalty < 0)) ||
+      (awayPenalty !== null && (!Number.isInteger(awayPenalty) || awayPenalty < 0))
+    ) {
+      return NextResponse.json(
+        { error: "Placar de penaltis invalido." },
+        { status: 400 }
+      );
+    }
+
+    if (homePenalty !== null && awayPenalty !== null && homePenalty === awayPenalty) {
+      return NextResponse.json(
+        { error: "Placar de penaltis nao pode ser empate." },
+        { status: 400 }
+      );
+    }
+
     const admin = getSupabaseAdmin();
 
     // Atualizar o resultado do jogo
@@ -84,6 +110,8 @@ export async function POST(request: NextRequest) {
         away_score: away,
         finished: finished ?? true,
         penalty_winner: penalty_winner || null,
+        home_penalty_score: homePenalty,
+        away_penalty_score: awayPenalty,
       })
       .eq("id", match_id);
 
