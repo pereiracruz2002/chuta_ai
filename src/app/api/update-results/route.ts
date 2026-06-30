@@ -1,55 +1,44 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { mapTeamName } from "@/lib/team-mapping";
+import {
+  type ApiMatchResult,
+  getRegulationScoreFromApiFootball,
+} from "@/lib/match-scores";
 
-// Supabase admin client (usa service role key para bypass de RLS)
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createClient(url, serviceKey);
 }
 
-// Status que indicam jogo finalizado
 const FINISHED_STATUSES_API_FOOTBALL = ["FT", "AET", "PEN"];
 const FINISHED_STATUS_FOOTBALL_DATA = "FINISHED";
 
-// Cálculo de pontos (mesma lógica do /api/admin/match-result)
 function calculatePoints(
   homePred: number,
   awayPred: number,
   homeScore: number,
   awayScore: number
 ): number {
-  // Placar exato
   if (homePred === homeScore && awayPred === awayScore) return 10;
 
   const predDiff = homePred - awayPred;
   const actualDiff = homeScore - awayScore;
 
-  // Vencedor/empate correto?
   const correctOutcome =
     (predDiff > 0 && actualDiff > 0) ||
     (predDiff < 0 && actualDiff < 0) ||
     (predDiff === 0 && actualDiff === 0);
 
   if (!correctOutcome) return 0;
-
-  // Saldo de gols correto
   if (predDiff === actualDiff) return 7;
-
-  // Acertou gols de um time
   if (homePred === homeScore || awayPred === awayScore) return 5;
-
-  // Apenas vencedor correto
   return 3;
 }
 
-// ==========================================
-// PROVIDER 1: API-Football (api-sports.io)
-// ==========================================
 interface ApiFootballFixture {
   fixture: {
-    id: number;
     status: { short: string };
   };
   teams: {
@@ -63,12 +52,42 @@ interface ApiFootballFixture {
   score: {
     fulltime: { home: number | null; away: number | null };
     extratime: { home: number | null; away: number | null };
+    penalty: { home: number | null; away: number | null };
   };
 }
 
-async function fetchFromApiFootball(): Promise<
-  { home_team: string; away_team: string; home_score: number; away_score: number }[]
-> {
+function parseApiFootballFixture(f: ApiFootballFixture): ApiMatchResult | null {
+  if (!FINISHED_STATUSES_API_FOOTBALL.includes(f.fixture.status.short)) return null;
+
+  try {
+    const regulation = getRegulationScoreFromApiFootball(f);
+    const homeTeam = mapTeamName(f.teams.home.name);
+    const awayTeam = mapTeamName(f.teams.away.name);
+
+    const homePen = f.score.penalty?.home ?? null;
+    const awayPen = f.score.penalty?.away ?? null;
+    const hasPenalties = homePen != null && awayPen != null;
+
+    let penaltyWinner: string | null = null;
+    if (hasPenalties && homePen !== awayPen) {
+      penaltyWinner = homePen > awayPen ? homeTeam : awayTeam;
+    }
+
+    return {
+      home_team: homeTeam,
+      away_team: awayTeam,
+      home_score: regulation.home,
+      away_score: regulation.away,
+      home_penalty_score: hasPenalties ? homePen : null,
+      away_penalty_score: hasPenalties ? awayPen : null,
+      penalty_winner: penaltyWinner,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFromApiFootball(): Promise<ApiMatchResult[]> {
   const apiKey = process.env.API_FOOTBALL_KEY;
   if (!apiKey) return [];
 
@@ -84,45 +103,68 @@ async function fetchFromApiFootball(): Promise<
 
   const data = await response.json();
   const fixtures: ApiFootballFixture[] = data.response || [];
-  const results: { home_team: string; away_team: string; home_score: number; away_score: number }[] = [];
+  const results: ApiMatchResult[] = [];
 
   for (const f of fixtures) {
-    if (!FINISHED_STATUSES_API_FOOTBALL.includes(f.fixture.status.short)) continue;
-    if (f.goals.home === null || f.goals.away === null) continue;
-
-    results.push({
-      home_team: mapTeamName(f.teams.home.name),
-      away_team: mapTeamName(f.teams.away.name),
-      home_score: f.goals.home,
-      away_score: f.goals.away,
-    });
+    const parsed = parseApiFootballFixture(f);
+    if (parsed) results.push(parsed);
   }
 
   return results;
 }
 
-// ==========================================
-// PROVIDER 2: football-data.org (gratuita)
-// Registre-se em https://www.football-data.org/ para obter token grátis
-// ==========================================
 interface FootballDataMatch {
   status: string;
   homeTeam: { name: string };
   awayTeam: { name: string };
   score: {
     fullTime: { home: number | null; away: number | null };
+    extraTime?: { home: number | null; away: number | null };
+    penalties?: { home: number | null; away: number | null };
+  };
+}
+
+function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
+  if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) return null;
+
+  const extra = m.score.extraTime;
+  const full = m.score.fullTime;
+  const homeScore =
+    extra?.home != null && extra?.away != null ? extra.home : full?.home;
+  const awayScore =
+    extra?.home != null && extra?.away != null ? extra.away : full?.away;
+
+  if (homeScore == null || awayScore == null) return null;
+
+  const homeTeam = mapTeamName(m.homeTeam.name);
+  const awayTeam = mapTeamName(m.awayTeam.name);
+  const homePen = m.score.penalties?.home ?? null;
+  const awayPen = m.score.penalties?.away ?? null;
+  const hasPenalties = homePen != null && awayPen != null;
+
+  let penaltyWinner: string | null = null;
+  if (hasPenalties && homePen !== awayPen) {
+    penaltyWinner = homePen > awayPen ? homeTeam : awayTeam;
+  }
+
+  return {
+    home_team: homeTeam,
+    away_team: awayTeam,
+    home_score: homeScore,
+    away_score: awayScore,
+    home_penalty_score: hasPenalties ? homePen : null,
+    away_penalty_score: hasPenalties ? awayPen : null,
+    penalty_winner: penaltyWinner,
   };
 }
 
 async function fetchFromFootballData(): Promise<{
-  results: { home_team: string; away_team: string; home_score: number; away_score: number }[];
+  results: ApiMatchResult[];
   debug?: string;
 }> {
   const apiKey = process.env.FOOTBALL_DATA_API_KEY;
   if (!apiKey) return { results: [] };
 
-  // Tentar World Cup 2026 na football-data.org
-  // Possíveis códigos: WC (genérico), ou ID numérico
   const endpoints = [
     "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
     "https://api.football-data.org/v4/competitions/2000/matches?status=FINISHED",
@@ -135,33 +177,19 @@ async function fetchFromFootballData(): Promise<{
         cache: "no-store",
       });
 
-      if (!response.ok) {
-        console.log(`football-data.org ${url} retornou ${response.status}`);
-        continue;
-      }
+      if (!response.ok) continue;
 
       const data = await response.json();
       const matches: FootballDataMatch[] = data.matches || [];
-
       if (matches.length === 0) continue;
 
-      const results: { home_team: string; away_team: string; home_score: number; away_score: number }[] = [];
-
+      const results: ApiMatchResult[] = [];
       for (const m of matches) {
-        if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) continue;
-        if (m.score.fullTime.home === null || m.score.fullTime.away === null) continue;
-
-        results.push({
-          home_team: mapTeamName(m.homeTeam.name),
-          away_team: mapTeamName(m.awayTeam.name),
-          home_score: m.score.fullTime.home,
-          away_score: m.score.fullTime.away,
-        });
+        const parsed = parseFootballDataMatch(m);
+        if (parsed) results.push(parsed);
       }
 
-      if (results.length > 0) {
-        return { results };
-      }
+      if (results.length > 0) return { results };
     } catch (e) {
       console.error(`Erro ao buscar ${url}:`, e);
     }
@@ -170,9 +198,81 @@ async function fetchFromFootballData(): Promise<{
   return { results: [], debug: "football-data.org não retornou jogos finalizados" };
 }
 
-// ==========================================
-// ROUTE HANDLER
-// ==========================================
+function needsUpdate(match: any, result: ApiMatchResult): boolean {
+  if (!match.finished) return true;
+
+  const regulationChanged =
+    match.home_score !== result.home_score ||
+    match.away_score !== result.away_score;
+
+  const penaltyMissing =
+    result.home_penalty_score != null &&
+    (match.home_penalty_score == null || match.away_penalty_score == null);
+
+  const penaltyWrong =
+    result.home_penalty_score != null &&
+    (match.home_penalty_score !== result.home_penalty_score ||
+      match.away_penalty_score !== result.away_penalty_score);
+
+  return regulationChanged || penaltyMissing || penaltyWrong;
+}
+
+async function recalculatePointsForMatch(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  matchId: string,
+  homeScore: number,
+  awayScore: number
+) {
+  const { data: predictions } = await supabase
+    .from("predictions")
+    .select("id, home_prediction, away_prediction, pool_id, user_id")
+    .eq("match_id", matchId);
+
+  if (!predictions || predictions.length === 0) return;
+
+  for (const pred of predictions) {
+    const points = calculatePoints(
+      pred.home_prediction,
+      pred.away_prediction,
+      homeScore,
+      awayScore
+    );
+
+    await supabase
+      .from("predictions")
+      .update({ points, updated_at: new Date().toISOString() })
+      .eq("id", pred.id);
+  }
+
+  const affectedPools = [...new Set(predictions.map((p) => p.pool_id))];
+
+  for (const poolId of affectedPools) {
+    const { data: members } = await supabase
+      .from("pool_members")
+      .select("user_id")
+      .eq("pool_id", poolId);
+
+    if (!members) continue;
+
+    for (const member of members) {
+      const { data: memberPreds } = await supabase
+        .from("predictions")
+        .select("points")
+        .eq("pool_id", poolId)
+        .eq("user_id", member.user_id);
+
+      const totalScore =
+        memberPreds?.reduce((sum, p) => sum + (p.points || 0), 0) || 0;
+
+      await supabase
+        .from("pool_members")
+        .update({ score: totalScore })
+        .eq("pool_id", poolId)
+        .eq("user_id", member.user_id);
+    }
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -187,25 +287,22 @@ export async function GET(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    // Buscar jogos pendentes (já começaram mas não finalizados)
-    const { data: pendingMatches, error: dbError } = await supabase
+    const { data: allMatches, error: dbError } = await supabase
       .from("matches")
       .select("*")
-      .eq("finished", false)
       .lt("starts_at", new Date().toISOString());
 
     if (dbError) {
       throw new Error(`Erro ao buscar jogos: ${dbError.message}`);
     }
 
-    if (!pendingMatches || pendingMatches.length === 0) {
+    if (!allMatches || allMatches.length === 0) {
       return NextResponse.json({
-        message: "Nenhum jogo pendente para atualizar",
+        message: "Nenhum jogo para atualizar",
         updated: 0,
       });
     }
 
-    // Tentar buscar resultados de APIs disponíveis
     let finishedResults = await fetchFromApiFootball();
     let debugInfo = "";
 
@@ -216,131 +313,89 @@ export async function GET(request: Request) {
     }
 
     if (finishedResults.length === 0) {
-      const hasAnyKey = process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_DATA_API_KEY;
+      const hasAnyKey =
+        process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_DATA_API_KEY;
       if (!hasAnyKey) {
         return NextResponse.json({
-          message: "Nenhuma API de resultados configurada. Configure API_FOOTBALL_KEY ou FOOTBALL_DATA_API_KEY, ou insira os resultados manualmente pelo painel admin.",
+          message:
+            "Nenhuma API de resultados configurada. Configure API_FOOTBALL_KEY ou FOOTBALL_DATA_API_KEY, ou insira os resultados manualmente pelo painel admin.",
           updated: 0,
-          pending: pendingMatches.length,
+          pending: allMatches.filter((m: any) => !m.finished).length,
         });
       }
 
-      // Listar jogos pendentes para debug
-      const pendingNames = pendingMatches.map(
-        (m: any) => `${m.home_team} vs ${m.away_team}`
-      );
+      const pendingNames = allMatches
+        .filter((m: any) => !m.finished)
+        .map((m: any) => `${m.home_team} vs ${m.away_team}`);
 
       return NextResponse.json({
-        message: `Nenhum resultado finalizado encontrado na API para os ${pendingMatches.length} jogo(s) pendente(s). Insira manualmente pelo painel admin.`,
+        message: `Nenhum resultado finalizado encontrado na API. Insira manualmente pelo painel admin.`,
         updated: 0,
-        pending: pendingMatches.length,
+        pending: pendingNames.length,
         pending_matches: pendingNames,
         debug: debugInfo || undefined,
       });
     }
 
-    // Atualizar jogos no banco
     let updatedCount = 0;
     const updates: string[] = [];
-    const updatedMatchIds: string[] = [];
+    const recalculateIds: { id: string; home: number; away: number }[] = [];
 
-    for (const match of pendingMatches) {
+    for (const match of allMatches) {
       const result = finishedResults.find(
         (r) => r.home_team === match.home_team && r.away_team === match.away_team
       );
 
       if (!result) continue;
+      if (!needsUpdate(match, result)) continue;
+
+      const wasFinished = match.finished;
+      const regulationChanged =
+        match.home_score !== result.home_score ||
+        match.away_score !== result.away_score;
 
       const { error: updateError } = await supabase
         .from("matches")
         .update({
           home_score: result.home_score,
           away_score: result.away_score,
+          home_penalty_score: result.home_penalty_score,
+          away_penalty_score: result.away_penalty_score,
+          penalty_winner: result.penalty_winner,
           finished: true,
         })
         .eq("id", match.id);
 
       if (!updateError) {
         updatedCount++;
-        updatedMatchIds.push(match.id);
+
+        const penaltyLabel =
+          result.home_penalty_score != null
+            ? ` (pen. ${result.home_penalty_score}-${result.away_penalty_score})`
+            : "";
+
         updates.push(
-          `${match.home_team} ${result.home_score} x ${result.away_score} ${match.away_team}`
+          `${match.home_team} ${result.home_score} x ${result.away_score} ${match.away_team}${penaltyLabel}`
         );
+
+        if (!wasFinished || regulationChanged) {
+          recalculateIds.push({
+            id: match.id,
+            home: result.home_score,
+            away: result.away_score,
+          });
+        }
       }
     }
 
-    // Recalcular pontos das previsões e ranking dos membros
-    if (updatedMatchIds.length > 0) {
-      for (const matchId of updatedMatchIds) {
-        // Buscar o resultado final do jogo
-        const { data: matchData } = await supabase
-          .from("matches")
-          .select("home_score, away_score")
-          .eq("id", matchId)
-          .single();
-
-        if (!matchData) continue;
-
-        // Buscar todas as previsões deste jogo
-        const { data: predictions } = await supabase
-          .from("predictions")
-          .select("id, home_prediction, away_prediction, pool_id, user_id")
-          .eq("match_id", matchId);
-
-        if (!predictions || predictions.length === 0) continue;
-
-        // Calcular e atualizar pontos de cada previsão
-        for (const pred of predictions) {
-          const points = calculatePoints(
-            pred.home_prediction,
-            pred.away_prediction,
-            matchData.home_score,
-            matchData.away_score
-          );
-
-          await supabase
-            .from("predictions")
-            .update({ points, updated_at: new Date().toISOString() })
-            .eq("id", pred.id);
-        }
-
-        // Recalcular score total dos membros nos bolões afetados
-        const affectedPools = [...new Set(predictions.map((p) => p.pool_id))];
-
-        for (const poolId of affectedPools) {
-          const { data: members } = await supabase
-            .from("pool_members")
-            .select("user_id")
-            .eq("pool_id", poolId);
-
-          if (!members) continue;
-
-          for (const member of members) {
-            const { data: memberPreds } = await supabase
-              .from("predictions")
-              .select("points")
-              .eq("pool_id", poolId)
-              .eq("user_id", member.user_id);
-
-            const totalScore = memberPreds?.reduce(
-              (sum, p) => sum + (p.points || 0),
-              0
-            ) || 0;
-
-            await supabase
-              .from("pool_members")
-              .update({ score: totalScore })
-              .eq("pool_id", poolId)
-              .eq("user_id", member.user_id);
-          }
-        }
-      }
+    for (const { id, home, away } of recalculateIds) {
+      await recalculatePointsForMatch(supabase, id, home, away);
     }
 
     return NextResponse.json({
       message: "Atualização concluída",
       updated: updatedCount,
-      total_pending: pendingMatches.length,
+      total_checked: allMatches.length,
       results: updates,
     });
   } catch (error: unknown) {

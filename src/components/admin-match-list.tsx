@@ -148,13 +148,7 @@ export function AdminMatchList({ matches, poolId }: AdminMatchListProps) {
                       </div>
                       <div className="text-center px-3">
                         {match.finished ? (
-                          <MatchScore
-                            homeScore={match.home_score}
-                            awayScore={match.away_score}
-                            homePenaltyScore={match.home_penalty_score}
-                            awayPenaltyScore={match.away_penalty_score}
-                            size="sm"
-                          />
+                          <MatchScore match={match} size="sm" />
                         ) : (
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Clock className="w-3 h-3" />

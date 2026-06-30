@@ -461,12 +461,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
                         {/* Score / VS */}
                         <div className="flex flex-col items-center gap-1.5 px-4">
                           {match.finished ? (
-                            <MatchScore
-                              homeScore={match.home_score}
-                              awayScore={match.away_score}
-                              homePenaltyScore={match.home_penalty_score}
-                              awayPenaltyScore={match.away_penalty_score}
-                            />
+                            <MatchScore match={match} />
                           ) : started ? (
                             <div className="flex items-center gap-2">
                               <span className="text-2xl font-bold text-muted-foreground">-</span>
@@ -487,11 +482,7 @@ export function MatchList({ matches, predictions, allPredictions, poolId, userId
                           {match.finished && (
                             <Badge variant="secondary" className="text-xs px-2 py-0.5 gap-1 bg-muted/50">
                               <CheckCircle2 className="w-3 h-3" />
-                              {match.penalty_winner &&
-                              match.home_penalty_score == null &&
-                              match.away_penalty_score == null
-                                ? `${match.penalty_winner} nos pen.`
-                                : "Encerrado"}
+                              Encerrado
                             </Badge>
                           )}
                           {!started && !match.finished && (
