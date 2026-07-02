@@ -106,13 +106,20 @@ export function mergeExtraTimeScore(
 
   // Placar cumulativo após prorrogação (ex: FT 2-2, AET 3-2)
   const looksCumulative =
-    extratime.home >= fulltime.home && extratime.away >= fulltime.away;
+    extratime.home >= fulltime.home &&
+    extratime.away >= fulltime.away &&
+    (extratime.home !== fulltime.home || extratime.away !== fulltime.away);
 
   if (looksCumulative) {
     return { home: extratime.home, away: extratime.away };
   }
 
-  // Placar incremental — só gols na prorrogação (ex: FT 2-2, ET 1-0 → 3-2)
+  // fulltime já é o placar final (inclui prorrogação) — não somar extratime parcial
+  if (fulltime.home !== fulltime.away) {
+    return fulltime;
+  }
+
+  // Empate no tempo regulamentar: extratime traz só os gols da prorrogação (ex: 2-2 + 1-0 → 3-2)
   return {
     home: fulltime.home + extratime.home,
     away: fulltime.away + extratime.away,
@@ -133,15 +140,30 @@ export function getRegulationScoreFromApiFootball(f: {
   const fulltime = f.score.fulltime;
   const extratime = f.score.extratime;
   const goals = f.goals;
+  const merged = mergeExtraTimeScore(fulltime, extratime);
 
-  // goals costuma trazer o placar final antes dos pênaltis (inclui prorrogação)
-  if (hasValidScore(goals) && hasValidScore(fulltime)) {
-    if (goals.home !== fulltime.home || goals.away !== fulltime.away) {
-      return { home: goals.home, away: goals.away };
+  if (hasValidScore(goals) && merged && hasValidScore(fulltime)) {
+    const goalsSameAsFulltime =
+      goals.home === fulltime.home && goals.away === fulltime.away;
+    const goalsSameAsMerged =
+      goals.home === merged.home && goals.away === merged.away;
+
+    // goals preso no placar dos 90' mas prorrogação alterou o resultado
+    if (goalsSameAsFulltime && !goalsSameAsMerged) {
+      return merged;
     }
+
+    // goals inflado (ex: 4-2) enquanto merge dá o placar correto (3-2)
+    if (
+      !goalsSameAsMerged &&
+      goals.home + goals.away > merged.home + merged.away
+    ) {
+      return merged;
+    }
+
+    return goals;
   }
 
-  const merged = mergeExtraTimeScore(fulltime, extratime);
   if (merged) return merged;
 
   if (hasValidScore(goals)) {
