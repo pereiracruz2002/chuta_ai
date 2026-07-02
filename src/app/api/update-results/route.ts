@@ -61,7 +61,11 @@ function parseApiFootballFixture(f: ApiFootballFixture): ApiMatchResult | null {
   if (!FINISHED_STATUSES_API_FOOTBALL.includes(f.fixture.status.short)) return null;
 
   try {
-    const regulation = getRegulationScoreFromApiFootball(f);
+    const regulation = getRegulationScoreFromApiFootball({
+      fixture: f.fixture,
+      goals: f.goals,
+      score: f.score,
+    });
     const homeTeam = mapTeamName(f.teams.home.name);
     const awayTeam = mapTeamName(f.teams.away.name);
 
@@ -122,13 +126,18 @@ interface FootballDataMatch {
     fullTime: { home: number | null; away: number | null };
     extraTime?: { home: number | null; away: number | null };
     penalties?: { home: number | null; away: number | null };
+    duration?: string;
   };
 }
 
 function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
   if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) return null;
 
-  const regulation = getRegulationScoreFromFootballData(m.score);
+  const regulation = getRegulationScoreFromFootballData({
+    fullTime: m.score.fullTime,
+    extraTime: m.score.extraTime,
+    duration: m.score.duration,
+  });
   if (!regulation) return null;
 
   const homeTeam = mapTeamName(m.homeTeam.name);
