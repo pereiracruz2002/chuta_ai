@@ -66,36 +66,63 @@ export interface ApiMatchResult {
 
 type ScorePair = { home: number | null; away: number | null };
 
-function isExtratimePlaceholder(
-  fulltime: ScorePair,
-  extratime: ScorePair
-): boolean {
-  if (extratime.home == null || extratime.away == null) return true;
-  if (fulltime.home == null || fulltime.away == null) return false;
-
-  // API envia 0-0 na prorrogação quando o jogo foi direto aos pênaltis
-  if (
-    extratime.home === 0 &&
-    extratime.away === 0 &&
-    (fulltime.home !== 0 || fulltime.away !== 0)
-  ) {
-    return true;
-  }
-
-  // Sem gols na prorrogação — placar igual ao tempo regulamentar
-  return extratime.home === fulltime.home && extratime.away === fulltime.away;
-}
-
 function hasValidScore(pair: ScorePair): pair is { home: number; away: number } {
   return pair.home != null && pair.away != null;
 }
 
 /**
- * Placar após tempo regulamentar + prorrogação, antes de shootout.
- * Usa status da partida para evitar confundir placeholder de extratime com placar real.
+ * Combina tempo regulamentar + prorrogação.
+ * A API pode enviar extratime cumulativo (2-2 → 3-2) ou incremental (2-2 + 1-0 na prorrogação).
+ */
+export function mergeExtraTimeScore(
+  fulltime: ScorePair,
+  extratime: ScorePair
+): { home: number; away: number } | null {
+  if (!hasValidScore(fulltime) && !hasValidScore(extratime)) {
+    return null;
+  }
+
+  if (!hasValidScore(extratime)) {
+    return hasValidScore(fulltime) ? fulltime : null;
+  }
+
+  if (!hasValidScore(fulltime)) {
+    return extratime;
+  }
+
+  // Placeholder 0-0 quando o jogo foi direto aos pênaltis
+  if (
+    extratime.home === 0 &&
+    extratime.away === 0 &&
+    (fulltime.home !== 0 || fulltime.away !== 0)
+  ) {
+    return fulltime;
+  }
+
+  // Sem gols na prorrogação
+  if (extratime.home === fulltime.home && extratime.away === fulltime.away) {
+    return fulltime;
+  }
+
+  // Placar cumulativo após prorrogação (ex: FT 2-2, AET 3-2)
+  const looksCumulative =
+    extratime.home >= fulltime.home && extratime.away >= fulltime.away;
+
+  if (looksCumulative) {
+    return { home: extratime.home, away: extratime.away };
+  }
+
+  // Placar incremental — só gols na prorrogação (ex: FT 2-2, ET 1-0 → 3-2)
+  return {
+    home: fulltime.home + extratime.home,
+    away: fulltime.away + extratime.away,
+  };
+}
+
+/**
+ * Placar após 90' + prorrogação, antes de shootout. Usado na pontuação dos palpites.
  */
 export function getRegulationScoreFromApiFootball(f: {
-  fixture: { status: { short: string } };
   goals: ScorePair;
   score: {
     fulltime: ScorePair;
@@ -103,39 +130,19 @@ export function getRegulationScoreFromApiFootball(f: {
     penalty: ScorePair;
   };
 }): { home: number; away: number } {
-  const status = f.fixture.status.short;
   const fulltime = f.score.fulltime;
   const extratime = f.score.extratime;
   const goals = f.goals;
-  const extraIsReal = !isExtratimePlaceholder(fulltime, extratime);
 
-  // Decidido na prorrogação — extratime tem o placar final (ex: 2-2 no FT → 3-2 no AET)
-  if (status === "AET") {
-    if (hasValidScore(extratime)) {
-      return { home: extratime.home, away: extratime.away };
-    }
-    if (hasValidScore(goals)) {
+  // goals costuma trazer o placar final antes dos pênaltis (inclui prorrogação)
+  if (hasValidScore(goals) && hasValidScore(fulltime)) {
+    if (goals.home !== fulltime.home || goals.away !== fulltime.away) {
       return { home: goals.home, away: goals.away };
     }
   }
 
-  // Decidido nos pênaltis — placar antes do shootout
-  if (status === "PEN") {
-    if (extraIsReal && hasValidScore(extratime)) {
-      return { home: extratime.home, away: extratime.away };
-    }
-    if (hasValidScore(goals)) {
-      return { home: goals.home, away: goals.away };
-    }
-    if (hasValidScore(fulltime)) {
-      return { home: fulltime.home, away: fulltime.away };
-    }
-  }
-
-  // Houve prorrogação com gols mesmo sem status AET explícito
-  if (extraIsReal && hasValidScore(extratime)) {
-    return { home: extratime.home, away: extratime.away };
-  }
+  const merged = mergeExtraTimeScore(fulltime, extratime);
+  if (merged) return merged;
 
   if (hasValidScore(goals)) {
     return { home: goals.home, away: goals.away };
@@ -151,38 +158,44 @@ export function getRegulationScoreFromApiFootball(f: {
 export function getRegulationScoreFromFootballData(score: {
   fullTime: ScorePair;
   extraTime?: ScorePair;
-  duration?: string;
 }): { home: number; away: number } | null {
-  const full = score.fullTime;
-  const extra = score.extraTime ?? { home: null, away: null };
-  const extraIsReal = !isExtratimePlaceholder(full, extra);
-  const duration = score.duration ?? "";
+  const merged = mergeExtraTimeScore(
+    score.fullTime,
+    score.extraTime ?? { home: null, away: null }
+  );
 
-  if (
-    (duration === "EXTRA_TIME" || duration === "AET") &&
-    extraIsReal &&
-    hasValidScore(extra)
-  ) {
-    return { home: extra.home, away: extra.away };
-  }
+  return merged;
+}
 
-  if (duration === "PENALTY_SHOOTOUT") {
-    if (extraIsReal && hasValidScore(extra)) {
-      return { home: extra.home, away: extra.away };
-    }
-    if (hasValidScore(full)) {
-      return { home: full.home, away: full.away };
-    }
-    return null;
-  }
+/** Encontra resultado da API mesmo se mandante/visitante estiverem invertidos. */
+export function findApiResultForMatch(
+  results: ApiMatchResult[],
+  homeTeam: string,
+  awayTeam: string
+): (ApiMatchResult & { reversed: boolean }) | null {
+  const direct = results.find(
+    (r) => r.home_team === homeTeam && r.away_team === awayTeam
+  );
+  if (direct) return { ...direct, reversed: false };
 
-  if (extraIsReal && hasValidScore(extra)) {
-    return { home: extra.home, away: extra.away };
-  }
+  const reversed = results.find(
+    (r) => r.home_team === awayTeam && r.away_team === homeTeam
+  );
+  if (!reversed) return null;
 
-  if (hasValidScore(full)) {
-    return { home: full.home, away: full.away };
-  }
-
-  return null;
+  return {
+    home_team: homeTeam,
+    away_team: awayTeam,
+    home_score: reversed.away_score,
+    away_score: reversed.home_score,
+    home_penalty_score: reversed.away_penalty_score,
+    away_penalty_score: reversed.home_penalty_score,
+    penalty_winner:
+      reversed.penalty_winner === homeTeam
+        ? homeTeam
+        : reversed.penalty_winner === awayTeam
+          ? awayTeam
+          : reversed.penalty_winner,
+    reversed: true,
+  };
 }

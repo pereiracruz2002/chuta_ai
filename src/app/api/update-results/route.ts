@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { mapTeamName } from "@/lib/team-mapping";
 import {
   type ApiMatchResult,
+  findApiResultForMatch,
   getRegulationScoreFromApiFootball,
   getRegulationScoreFromFootballData,
 } from "@/lib/match-scores";
@@ -62,7 +63,6 @@ function parseApiFootballFixture(f: ApiFootballFixture): ApiMatchResult | null {
 
   try {
     const regulation = getRegulationScoreFromApiFootball({
-      fixture: f.fixture,
       goals: f.goals,
       score: f.score,
     });
@@ -136,7 +136,6 @@ function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
   const regulation = getRegulationScoreFromFootballData({
     fullTime: m.score.fullTime,
     extraTime: m.score.extraTime,
-    duration: m.score.duration,
   });
   if (!regulation) return null;
 
@@ -346,8 +345,10 @@ export async function GET(request: Request) {
     const recalculateIds: { id: string; home: number; away: number }[] = [];
 
     for (const match of allMatches) {
-      const result = finishedResults.find(
-        (r) => r.home_team === match.home_team && r.away_team === match.away_team
+      const result = findApiResultForMatch(
+        finishedResults,
+        match.home_team,
+        match.away_team
       );
 
       if (!result) continue;
