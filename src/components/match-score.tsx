@@ -31,7 +31,7 @@ export function MatchScore({ match, size = "lg" }: MatchScoreProps) {
         <div className="flex flex-col items-center gap-0.5">
           {showLabels && (
             <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-              90&apos; + prorrogação
+              Placar
             </span>
           )}
           <div className="flex items-center gap-2">

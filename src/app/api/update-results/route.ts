@@ -136,6 +136,7 @@ function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
   const regulation = getRegulationScoreFromFootballData({
     fullTime: m.score.fullTime,
     extraTime: m.score.extraTime,
+    penalties: m.score.penalties,
   });
   if (!regulation) return null;
 
