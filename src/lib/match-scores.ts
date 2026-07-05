@@ -62,20 +62,93 @@ function scoresEqual(
   return a.home === b.home && a.away === b.away;
 }
 
-function isExtratimePlaceholder(
-  fulltime: { home: number; away: number },
-  extratime: { home: number; away: number }
-): boolean {
+function isDraw(score: { home: number; away: number }): boolean {
+  return score.home === score.away;
+}
+
+function sumScores(
+  a: { home: number; away: number },
+  b: { home: number; away: number }
+): { home: number; away: number } {
+  return { home: a.home + b.home, away: a.away + b.away };
+}
+
+/** extratime 0-0 ou igual ao fulltime = sem prorrogação real */
+function isExtratimePlaceholder(fulltime: ScorePair, extratime: ScorePair): boolean {
+  if (!hasValidScore(fulltime) || !hasValidScore(extratime)) return true;
   if (extratime.home === 0 && extratime.away === 0) return true;
   return scoresEqual(fulltime, extratime);
 }
 
+/** extratime contém placar do shootout, não de prorrogação */
+function extratimeIsPenaltyShootout(
+  extratime: { home: number; away: number },
+  penalty: ScorePair,
+  fulltime: ScorePair
+): boolean {
+  if (hasValidScore(penalty) && scoresEqual(extratime, penalty)) return true;
+
+  // extratime diferente do empate nos 90' mas fulltime era empate → provavelmente shootout
+  if (
+    hasValidScore(fulltime) &&
+    isDraw(fulltime) &&
+    !scoresEqual(extratime, fulltime) &&
+    !isDraw(extratime)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Antes dos pênaltis o placar é sempre empate.
+ * Corrige quando regulation+penalty foi gravado por engano.
+ */
+function fixRegulationBeforePenalties(
+  regulation: { home: number; away: number },
+  fulltime: ScorePair,
+  goals: ScorePair,
+  penalty: ScorePair
+): { home: number; away: number } {
+  if (!hasValidScore(penalty)) return regulation;
+  if (isDraw(regulation)) return regulation;
+
+  // goals = empate + pênaltis (ex: 1-1 + 3-4 = 4-5)
+  if (hasValidScore(goals) && scoresEqual(goals, sumScores(regulation, penalty))) {
+    const stripped = {
+      home: goals.home - penalty.home,
+      away: goals.away - penalty.away,
+    };
+    if (stripped.home >= 0 && stripped.away >= 0 && isDraw(stripped)) {
+      return stripped;
+    }
+  }
+
+  if (hasValidScore(goals) && scoresEqual(goals, sumScores(fulltime as { home: number; away: number }, penalty))) {
+    if (hasValidScore(fulltime) && isDraw(fulltime)) return fulltime;
+  }
+
+  if (hasValidScore(fulltime) && isDraw(fulltime)) return fulltime;
+
+  if (hasValidScore(goals) && isDraw(goals)) return goals;
+
+  const stripped = {
+    home: regulation.home - penalty.home,
+    away: regulation.away - penalty.away,
+  };
+  if (stripped.home >= 0 && stripped.away >= 0 && isDraw(stripped)) {
+    return stripped;
+  }
+
+  return regulation;
+}
+
 /**
  * Placar de 90' + prorrogação, sem shootout.
- * Nunca usa score.penalty nem soma pênaltis ao placar principal.
  */
 export function getRegulationScoreFromApiFootball(f: {
-  fixture?: { status: { short: string } };
+  fixture: { status: { short: string } };
   goals: ScorePair;
   score: {
     fulltime: ScorePair;
@@ -83,96 +156,102 @@ export function getRegulationScoreFromApiFootball(f: {
     penalty: ScorePair;
   };
 }): { home: number; away: number } {
+  const status = f.fixture.status.short;
   const fulltime = f.score.fulltime;
   const extratime = f.score.extratime;
   const penalty = f.score.penalty;
   const goals = f.goals;
   const hasPenalties = hasValidScore(penalty);
 
-  if (!hasValidScore(fulltime)) {
-    if (hasValidScore(goals) && hasPenalties) {
-      // goals às vezes vem como (90'+prorrogação) + pênaltis — remove o shootout
-      const stripped = {
-        home: goals.home - penalty.home,
-        away: goals.away - penalty.away,
-      };
-      if (stripped.home >= 0 && stripped.away >= 0) {
-        return stripped;
+  // ── PEN: decidido nos pênaltis ──────────────────────────────────────────
+  // Placar antes do shootout = empate. Nunca usar extratime (API coloca shootout lá).
+  if (status === "PEN") {
+    let regulation: { home: number; away: number };
+
+    if (hasValidScore(goals) && hasValidScore(fulltime)) {
+      if (hasPenalties && scoresEqual(goals, sumScores(fulltime, penalty))) {
+        regulation = fulltime;
+      } else if (isDraw(goals)) {
+        regulation = goals;
+      } else if (isDraw(fulltime)) {
+        regulation = fulltime;
+      } else {
+        regulation = goals;
       }
+    } else if (hasValidScore(goals)) {
+      regulation = goals;
+    } else if (hasValidScore(fulltime)) {
+      regulation = fulltime;
+    } else {
+      throw new Error("Placar de tempo regulamentar indisponivel");
+    }
+
+    return fixRegulationBeforePenalties(regulation, fulltime, goals, penalty);
+  }
+
+  // ── AET: decidido na prorrogação ────────────────────────────────────────
+  if (status === "AET") {
+    if (hasValidScore(extratime) && !isExtratimePlaceholder(fulltime, extratime)) {
+      return { home: extratime.home, away: extratime.away };
     }
     if (hasValidScore(goals)) {
       return { home: goals.home, away: goals.away };
     }
+    if (hasValidScore(fulltime)) {
+      return { home: fulltime.home, away: fulltime.away };
+    }
     throw new Error("Placar de tempo regulamentar indisponivel");
   }
 
-  // Base: tempo regulamentar (90')
-  let regulation: { home: number; away: number } = {
-    home: fulltime.home,
-    away: fulltime.away,
-  };
+  // ── FT ou fallback ──────────────────────────────────────────────────────
+  if (hasValidScore(fulltime)) {
+    let regulation: { home: number; away: number } = {
+      home: fulltime.home,
+      away: fulltime.away,
+    };
 
-  // Incorpora prorrogação apenas se for placar real (não placeholder e não é o shootout)
-  if (hasValidScore(extratime) && !isExtratimePlaceholder(fulltime, extratime)) {
-    const extratimeIsPenaltyShootout =
-      hasPenalties && scoresEqual(extratime, penalty);
-
-    if (!extratimeIsPenaltyShootout) {
-      // Cumulativo: FT 2-2, AET 3-2
+    if (
+      hasValidScore(extratime) &&
+      !isExtratimePlaceholder(fulltime, extratime) &&
+      !extratimeIsPenaltyShootout(extratime, penalty, fulltime)
+    ) {
       if (
         extratime.home >= fulltime.home &&
         extratime.away >= fulltime.away
       ) {
         regulation = { home: extratime.home, away: extratime.away };
-      } else if (fulltime.home === fulltime.away) {
-        // Incremental só com empate nos 90': FT 2-2, ET 1-0 → 3-2
-        regulation = {
-          home: fulltime.home + extratime.home,
-          away: fulltime.away + extratime.away,
-        };
+      } else if (isDraw(fulltime)) {
+        regulation = sumScores(fulltime, extratime);
       }
-      // Se fulltime já tem vencedor, extratime parcial é ignorado
     }
-  }
 
-  // goals nunca deve incluir pênaltis no placar de pontuação.
-  // Se goals = regulation + penalty, ignora goals.
-  if (hasValidScore(goals) && hasPenalties) {
-    const goalsMinusPenalty = {
-      home: goals.home - penalty.home,
-      away: goals.away - penalty.away,
-    };
-    if (
-      goalsMinusPenalty.home >= 0 &&
-      goalsMinusPenalty.away >= 0 &&
-      scoresEqual(goals, {
-        home: regulation.home + penalty.home,
-        away: regulation.away + penalty.away,
-      })
-    ) {
-      return regulation;
+    if (hasPenalties) {
+      regulation = fixRegulationBeforePenalties(
+        regulation,
+        fulltime,
+        goals,
+        penalty
+      );
     }
+
+    return regulation;
   }
 
-  // Segurança final: se o placar calculado for regulation+penalty, remove o shootout
-  if (
-    hasPenalties &&
-    scoresEqual(regulation, {
-      home: fulltime.home + penalty.home,
-      away: fulltime.away + penalty.away,
-    })
-  ) {
-    return { home: fulltime.home, away: fulltime.away };
+  if (hasValidScore(goals)) {
+    return { home: goals.home, away: goals.away };
   }
 
-  return regulation;
+  throw new Error("Placar de tempo regulamentar indisponivel");
 }
 
-export function getRegulationScoreFromFootballData(score: {
-  fullTime: ScorePair;
-  extraTime?: ScorePair;
-  penalties?: ScorePair;
-}): { home: number; away: number } | null {
+export function getRegulationScoreFromFootballData(
+  score: {
+    fullTime: ScorePair;
+    extraTime?: ScorePair;
+    penalties?: ScorePair;
+  },
+  duration?: string
+): { home: number; away: number } | null {
   const fulltime = score.fullTime;
   const extratime = score.extraTime ?? { home: null, away: null };
   const penalty = score.penalties ?? { home: null, away: null };
@@ -180,42 +259,49 @@ export function getRegulationScoreFromFootballData(score: {
 
   if (!hasValidScore(fulltime)) return null;
 
-  let regulation: { home: number; away: number } = {
-    home: fulltime.home,
-    away: fulltime.away,
-  };
+  // Decidido nos pênaltis — fullTime já inclui prorrogação, é o placar antes do shootout
+  if (duration === "PENALTY_SHOOTOUT" || hasPenalties) {
+    let regulation = fulltime;
 
-  // football-data.org: fullTime já inclui prorrogação quando houve.
-  // extraTime, quando presente, é o placar ao fim da prorrogação (cumulativo).
+    if (
+      hasValidScore(extratime) &&
+      !isExtratimePlaceholder(fulltime, extratime) &&
+      !extratimeIsPenaltyShootout(extratime, penalty, fulltime) &&
+      isDraw(extratime)
+    ) {
+      regulation = extratime;
+    }
+
+    return fixRegulationBeforePenalties(
+      regulation,
+      fulltime,
+      fulltime,
+      penalty
+    );
+  }
+
+  // Decidido na prorrogação
+  if (duration === "EXTRA_TIME" || duration === "AET") {
+    if (
+      hasValidScore(extratime) &&
+      !isExtratimePlaceholder(fulltime, extratime)
+    ) {
+      return { home: extratime.home, away: extratime.away };
+    }
+    return fulltime;
+  }
+
   if (
     hasValidScore(extratime) &&
-    !isExtratimePlaceholder(fulltime, extratime)
+    !isExtratimePlaceholder(fulltime, extratime) &&
+    !extratimeIsPenaltyShootout(extratime, penalty, fulltime)
   ) {
-    const extratimeIsPenaltyShootout =
-      hasPenalties && scoresEqual(extratime, penalty);
-
-    if (!extratimeIsPenaltyShootout) {
-      if (
-        extratime.home >= fulltime.home &&
-        extratime.away >= fulltime.away
-      ) {
-        regulation = { home: extratime.home, away: extratime.away };
-      }
+    if (extratime.home >= fulltime.home && extratime.away >= fulltime.away) {
+      return { home: extratime.home, away: extratime.away };
     }
   }
 
-  // Nunca somar pênaltis
-  if (
-    hasPenalties &&
-    scoresEqual(regulation, {
-      home: fulltime.home + penalty.home,
-      away: fulltime.away + penalty.away,
-    })
-  ) {
-    return { home: fulltime.home, away: fulltime.away };
-  }
-
-  return regulation;
+  return fulltime;
 }
 
 /** Encontra resultado da API mesmo se mandante/visitante estiverem invertidos. */

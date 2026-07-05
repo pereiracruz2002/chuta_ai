@@ -63,6 +63,7 @@ function parseApiFootballFixture(f: ApiFootballFixture): ApiMatchResult | null {
 
   try {
     const regulation = getRegulationScoreFromApiFootball({
+      fixture: f.fixture,
       goals: f.goals,
       score: f.score,
     });
@@ -133,11 +134,14 @@ interface FootballDataMatch {
 function parseFootballDataMatch(m: FootballDataMatch): ApiMatchResult | null {
   if (m.status !== FINISHED_STATUS_FOOTBALL_DATA) return null;
 
-  const regulation = getRegulationScoreFromFootballData({
-    fullTime: m.score.fullTime,
-    extraTime: m.score.extraTime,
-    penalties: m.score.penalties,
-  });
+  const regulation = getRegulationScoreFromFootballData(
+    {
+      fullTime: m.score.fullTime,
+      extraTime: m.score.extraTime,
+      penalties: m.score.penalties,
+    },
+    m.score.duration
+  );
   if (!regulation) return null;
 
   const homeTeam = mapTeamName(m.homeTeam.name);
