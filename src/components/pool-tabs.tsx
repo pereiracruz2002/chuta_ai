@@ -3,6 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MatchList } from "@/components/match-list";
 import { RankingTable } from "@/components/ranking-table";
+import { ScoreEvolution } from "@/components/score-evolution";
 import { MembersList } from "@/components/members-list";
 import { ScoringRules } from "@/components/scoring-rules";
 import { MiniRanking } from "@/components/mini-ranking";
@@ -59,8 +60,14 @@ export function PoolTabs({
         />
       </TabsContent>
 
-      <TabsContent value="ranking" className="mt-6">
+      <TabsContent value="ranking" className="mt-6 space-y-4">
         <RankingTable members={members} userId={userId} />
+        <ScoreEvolution
+          members={members}
+          matches={matches}
+          predictions={allPredictions}
+          userId={userId}
+        />
       </TabsContent>
 
       <TabsContent value="rules" className="mt-6">
