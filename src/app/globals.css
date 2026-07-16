@@ -208,6 +208,11 @@
   50% { transform: translateY(-20px); }
 }
 
+@keyframes champion-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.05); }
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }

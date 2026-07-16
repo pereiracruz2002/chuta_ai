@@ -1,4 +1,4 @@
--- Copa do Mundo 2026 - Jogos da fase de grupos + Oitavas de final
+-- Copa do Mundo 2026 - Jogos da fase de grupos + 16 avos + Oitavas + Quartas + Semifinais + Final
 -- Horarios em UTC (o banco armazena como TIMESTAMPTZ)
 -- Para converter para Brasilia: UTC - 3 horas
 -- Fonte: FIFA / Wikipedia (dados oficiais do sorteio)
@@ -140,41 +140,109 @@ INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
 ('Croacia', 'Ghana', '2026-06-27T21:00:00Z', 'Grupo L');
 
 -- =============================================
--- OITAVAS DE FINAL (Round of 32) - 16 jogos
+-- 16 AVOS DE FINAL (Round of 32) - 16 jogos
 -- Horarios oficiais FIFA em UTC
--- Todos os confrontos definidos
 -- =============================================
 
 -- 28 de junho (Match 73)
 INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
-('Africa do Sul', 'Canada', '2026-06-28T19:00:00Z', 'Oitavas');
+('Africa do Sul', 'Canada', '2026-06-28T19:00:00Z', '16 avos');
 
 -- 29 de junho (Matches 74, 75, 76)
 INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
-('Brasil', 'Japao', '2026-06-29T17:00:00Z', 'Oitavas'),
-('Alemanha', 'Paraguai', '2026-06-29T20:30:00Z', 'Oitavas'),
-('Holanda', 'Marrocos', '2026-06-30T01:00:00Z', 'Oitavas');
+('Brasil', 'Japao', '2026-06-29T17:00:00Z', '16 avos'),
+('Alemanha', 'Paraguai', '2026-06-29T20:30:00Z', '16 avos'),
+('Holanda', 'Marrocos', '2026-06-30T01:00:00Z', '16 avos');
 
 -- 30 de junho (Matches 77, 78, 79)
 INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
-('Costa do Marfim', 'Noruega', '2026-06-30T17:00:00Z', 'Oitavas'),
-('Franca', 'Suecia', '2026-06-30T21:00:00Z', 'Oitavas'),
-('Mexico', 'Equador', '2026-07-01T01:00:00Z', 'Oitavas');
+('Costa do Marfim', 'Noruega', '2026-06-30T17:00:00Z', '16 avos'),
+('Franca', 'Suecia', '2026-06-30T21:00:00Z', '16 avos'),
+('Mexico', 'Equador', '2026-07-01T01:00:00Z', '16 avos');
 
 -- 1 de julho (Matches 80, 81, 82)
 INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
-('Inglaterra', 'RD Congo', '2026-07-01T16:00:00Z', 'Oitavas'),
-('Belgica', 'Senegal', '2026-07-01T20:00:00Z', 'Oitavas'),
-('Estados Unidos', 'Bosnia e Herzegovina', '2026-07-02T00:00:00Z', 'Oitavas');
+('Inglaterra', 'RD Congo', '2026-07-01T16:00:00Z', '16 avos'),
+('Belgica', 'Senegal', '2026-07-01T20:00:00Z', '16 avos'),
+('Estados Unidos', 'Bosnia e Herzegovina', '2026-07-02T00:00:00Z', '16 avos');
 
 -- 2 de julho (Matches 83, 84, 85)
 INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
-('Espanha', 'Austria', '2026-07-02T19:00:00Z', 'Oitavas'),
-('Portugal', 'Croacia', '2026-07-02T23:00:00Z', 'Oitavas'),
-('Suica', 'Argelia', '2026-07-03T03:00:00Z', 'Oitavas');
+('Espanha', 'Austria', '2026-07-02T19:00:00Z', '16 avos'),
+('Portugal', 'Croacia', '2026-07-02T23:00:00Z', '16 avos'),
+('Suica', 'Argelia', '2026-07-03T03:00:00Z', '16 avos');
 
 -- 3 de julho (Matches 86, 87, 88)
 INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
-('Australia', 'Egito', '2026-07-03T18:00:00Z', 'Oitavas'),
-('Argentina', 'Cabo Verde', '2026-07-03T22:00:00Z', 'Oitavas'),
-('Colombia', 'Ghana', '2026-07-04T01:30:00Z', 'Oitavas');
+('Australia', 'Egito', '2026-07-03T18:00:00Z', '16 avos'),
+('Argentina', 'Cabo Verde', '2026-07-03T22:00:00Z', '16 avos'),
+('Colombia', 'Ghana', '2026-07-04T01:30:00Z', '16 avos');
+
+-- =============================================
+-- OITAVAS DE FINAL (Round of 16) - 8 jogos
+-- Horarios oficiais FIFA em UTC
+-- =============================================
+
+-- 4 de julho (Matches 90, 89)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Canada', 'Marrocos', '2026-07-04T17:00:00Z', 'Oitavas'),
+('Paraguai', 'Franca', '2026-07-04T21:00:00Z', 'Oitavas');
+
+-- 5 de julho (Match 91)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Brasil', 'Noruega', '2026-07-05T20:00:00Z', 'Oitavas');
+
+-- 6 de julho (Matches 92, 93)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Mexico', 'Inglaterra', '2026-07-06T00:00:00Z', 'Oitavas'),
+('Portugal', 'Espanha', '2026-07-06T19:00:00Z', 'Oitavas');
+
+-- 7 de julho (Matches 94, 95, 96)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Estados Unidos', 'Belgica', '2026-07-07T00:00:00Z', 'Oitavas'),
+('Argentina', 'Egito', '2026-07-07T16:00:00Z', 'Oitavas'),
+('Suica', 'Colombia', '2026-07-07T20:00:00Z', 'Oitavas');
+
+-- =============================================
+-- QUARTAS DE FINAL - 4 jogos
+-- Horarios oficiais FIFA em UTC
+-- =============================================
+
+-- 9 de julho (Match 97)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Franca', 'Marrocos', '2026-07-09T20:00:00Z', 'Quartas');
+
+-- 10 de julho (Match 98)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Espanha', 'Belgica', '2026-07-10T19:00:00Z', 'Quartas');
+
+-- 11 de julho (Matches 99, 100)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Noruega', 'Inglaterra', '2026-07-11T21:00:00Z', 'Quartas'),
+('Argentina', 'Suica', '2026-07-12T01:00:00Z', 'Quartas');
+
+-- =============================================
+-- SEMIFINAIS - 2 jogos
+-- Horarios oficiais FIFA em UTC
+-- =============================================
+
+-- 14 de julho (Match 101)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Franca', 'Espanha', '2026-07-14T19:00:00Z', 'Semifinal');
+
+-- 15 de julho (Match 102)
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Inglaterra', 'Argentina', '2026-07-15T19:00:00Z', 'Semifinal');
+
+-- =============================================
+-- DISPUTA DE 3O LUGAR + FINAL
+-- Horarios oficiais FIFA em UTC
+-- =============================================
+
+-- 18 de julho (Match 103) - 3o lugar
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Franca', 'Inglaterra', '2026-07-18T21:00:00Z', '3o Lugar');
+
+-- 19 de julho (Match 104) - Final
+INSERT INTO matches (home_team, away_team, starts_at, stage) VALUES
+('Espanha', 'Argentina', '2026-07-19T19:00:00Z', 'Final');
